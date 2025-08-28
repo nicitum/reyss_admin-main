@@ -1,0 +1,399 @@
+import axios from "axios";
+import { jwtDecode } from "jwt-decode"; // Use curly braces
+
+const api = axios.create({
+  baseURL: "http://82.112.226.135:8090",
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const login = async (username, password) => {
+  const response = await api.post("/auth", { username, password });
+  const token = response.data.token;
+
+  if (token) {
+    const decodedToken = jwtDecode(token); // Decode token to get user details
+    localStorage.setItem("loggedInUser", JSON.stringify(decodedToken));
+    localStorage.setItem("authToken", token); // Store token for API calls
+  }
+
+  return response.data;
+};
+
+export const getOrders = async (date) => {
+  const response = await api.get(`/allOrders?date=${date}`);
+  console.log("Full API Response:", response); // Log the entire response
+  console.log("response.data:", response.data);
+  return response.data.data;
+};
+
+export const getUsers = async (search) => {
+  const response = await api.get(
+    `/allUsers${search ? `?search=${search}` : ""}`
+  );
+  return response.data.data;
+};
+
+export const addUser = async (userDetails) => {
+  const response = await api.post(`/addUser`, userDetails);
+  return response.data.data;
+};
+
+// Double-check that the backend expects the role to be part of the payload
+export const updateUser = async (userId, userData) => {
+  console.log(userData); // Verify if role is in the request payload
+  const response = await api.post(`/update?customer_id=${userId}`, userData);
+  return response.data.data;
+};
+
+
+export const toggleUserBlock = async (userId, status) => {
+  const response = await api.post(`/update?customer_id=${userId}`, { status });
+  return response.data.data;
+};
+
+export const getPayments = async () => {
+  const response = await api.get("/payments");
+  return response.data.data;
+};
+
+export const getProducts = async () => {
+  const response = await api.get("/products");
+  return response.data;
+};
+
+// Place an order (web admin version). Backend may derive customer from token,
+// but we also pass an explicit identifier if provided for on-behalf placement.
+export const placeOrder = async (products, orderType, orderDate, customerId = null) => {
+  const payload = { products, orderType, orderDate };
+  if (customerId) {
+    payload.customer_id = customerId;
+    payload.customerId = customerId; // send both to match backend expectations
+  }
+  const response = await api.post("/place", payload);
+  return response.data;
+};
+
+export const addProduct = async (productData) => {
+  const response = await api.post("/newItem", productData);
+  return response.data;
+};
+
+export const updateProduct = async (productId, productData) => {
+  const response = await api.post(`/editProd?id=${productId}`, productData);
+  return response.data;
+};
+
+export const updateProductsByBrand = async (brand, updateData) => {
+  const response = await api.patch(`/products/brand/${brand}`, updateData);
+  return response.data;
+};
+
+
+
+export const saveAssignment = async (customerId, routes) => {
+  try {
+    console.log("Request Body:", { customerId, routes });  // Log the request body
+    
+    const response = await api.post("/save-assignment", {
+      customerId: customerId,
+      routes: routes,
+    });
+
+    if (response.data) {
+      return response.data;
+    } else {
+      throw new Error("Invalid response from server");
+    }
+  } catch (error) {
+    console.error("Error while saving assignment:", error);
+    throw error;
+  }
+};
+
+// New function to get assigned routes for a given customerId (admin)
+export const getAssignedRoutes = async (customerId) => {
+  try {
+    console.log("Fetching assigned routes for customerId:", customerId);
+
+    const response = await api.post("/get-all-assigned-routes", {
+      customerId: customerId,
+    });
+
+    if (response.data && response.data.success) {
+     
+      return response.data.assignedRoutes; // Return the list of assigned routes
+    } else {
+      throw new Error(response.data.message || "Failed to fetch assigned routes.");
+    }
+  } catch (error) {
+    console.error("Error fetching assigned routes:", error);
+    throw error;
+  }
+};
+
+
+
+
+
+// Fetch users by selected routes
+export const getUniqueRoutes = async (routes) => {
+  try {
+    const response = await api.post("/get-unique-routes", { routes });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching users by routes:", error);
+    throw error;
+  }
+};
+
+// Assign users to selected admin
+export const assignUsersToAdmin = async (adminId, users) => {
+  try {
+    const response = await api.post("/assign-users-to-admin", { adminId, users });
+    return response.data;
+  } catch (error) {
+    console.error("Error assigning users to admin:", error);
+    throw error;
+  }
+};
+
+
+
+
+export const getAssignedUsers = async (adminId) => {
+  try {
+    const response = await api.get(`/assigned-users/${adminId}`);
+    return response.data; // return the response data
+  } catch (error) {
+    console.error("Error fetching assigned users:", error);
+    throw new Error("Failed to fetch assigned users");
+  }
+};
+
+
+export const updateOrderStatus = async (id, approve_status) => {
+  try {
+    console.log('API Call - updateOrderStatus:', { id, approve_status });
+    const payload = { id: id, approve_status: approve_status };
+    console.log('API Payload:', payload);
+    const response = await api.post("/update-order-status", payload);
+    console.log('API Response - updateOrderStatus:', response);
+    return response; // Return full response to check status code
+  } catch (error) {
+    console.error("Error updating order status:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
+export const getAdminOrders = async (adminId, date = null) => {
+  try {
+    const url = `/get-admin-orders/${adminId}${date ? `?date=${date}` : ''}`;
+    console.log("[DEBUG] Fetching admin orders from:", url);
+    const response = await api.get(url);
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Failed to fetch admin orders");
+    }
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching admin orders:", error);
+    throw new Error(error.message || "Failed to fetch admin orders");
+  }
+};
+
+
+export const getOrderProducts = async (orderId) => {
+  try {
+    // **Corrected API Call:** Use query parameters instead of path parameters
+    const response = await api.get(`/order-products`, { // Base path is just /order-products
+      params: { // Use 'params' to send query parameters
+        orderId: orderId // Send orderId as a query parameter
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching order products:", error);
+    throw new Error("Failed to fetch order products");
+  }
+};
+
+
+export const fetchMostRecentOrderApi = async (customerId, orderType) => {
+  try {
+    const response = await api.get(`/most-recent-order`, {
+      params: {
+        customerId: customerId,
+        orderType: orderType, // This will be automatically added if orderType is provided
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching most recent order:", error);
+    throw new Error("Failed to fetch most recent order");
+  }
+};
+
+
+export const placeAdminOrder = async (customerId, orderType, referenceOrderId) => {
+  try {
+    const response = await api.post(`/on-behalf`, {
+      customer_id: customerId,
+      order_type: orderType,
+      reference_order_id: referenceOrderId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error placing ${orderType} order for customer ${customerId}:`, error);
+    throw new Error(`Failed to place ${orderType} order for customer ${customerId}`);
+  }
+};
+
+
+export const getAllOrders = async () => {
+  const response = await api.get(
+    `/get-all-orders`
+  );
+  return response.data.data;
+};
+
+
+export const updateOrderPrice = async (orderId, productId, newPrice) => {
+  try {
+    const response = await api.put(`/update_order_price/${orderId}/product/${productId}`, { newPrice });
+    return response;
+  } catch (error) {
+    console.error('Error updating order price:', error);
+    throw error;
+  }
+};
+
+
+export const updateCustomerPrice = async (customerId, productId, customerPrice) => {
+  try {
+    const response = await api.post('/customer_price_update', {
+      customer_id: customerId,
+      product_id: productId,
+      customer_price: customerPrice,
+    });
+    return response;
+  } catch (error) {
+    console.error('Error updating/adding customer price:', error);
+    throw error;
+  }
+};
+
+
+export const globalPriceUpdate = async (productId, newDiscountPrice) => {
+  try {
+    const response = await api.post("/global-price-update", {
+      product_id: productId,
+      new_discount_price: parseFloat(newDiscountPrice), // Ensure it’s a number
+    });
+    return response;
+  } catch (error) {
+    console.error("Error updating global prices:", error);
+    throw error;
+  }
+};
+
+export const getInvoices = async (startDate = '', endDate = '') => {
+  try {
+    const response = await api.get('/fetch-all-invoices', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      params: {
+        startDate,
+        endDate,
+      },
+    });
+    return {
+      success: true,
+      data: response.data.data || [],
+      message: response.data.message,
+    };
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return {
+      success: false,
+      data: [],
+      message: error.response?.data?.message || 'Failed to fetch invoices',
+    };
+  }
+};
+
+
+export const fetchMostRecentOrdersBatchApi = async (customerIds, orderTypes) => {
+  try {
+      const response = await api.post('/most-recent-orders/batch', { customerIds, orderTypes });
+      return response.data;
+  } catch (error) {
+      console.error('Error fetching batch recent orders:', error);
+      throw error;
+  }
+};
+
+
+export const getReceipts = async (startDate = '', endDate = '') => {
+  try {
+    const query = [];
+    if (startDate) query.push(`start_date=${startDate}`);
+    if (endDate) query.push(`end_date=${endDate}`);
+    const url = `/fetch-all-receipts${query.length ? '?' + query.join('&') : ''}`;
+    const response = await api.get(url);
+    console.log("Full API Response:", response);
+    console.log("response.data:", response.data);
+    if (!response.data || !Array.isArray(response.data.data)) {
+      throw new Error("Invalid response structure: response.data.data is not an array");
+    }
+    return response.data.data;
+  } catch (error) {
+    console.error("Error in getReceipts:", error);
+    throw error;
+  }
+};
+
+// Fetch orders with date range filtering for Order Acceptance page
+export const getOrdersWithDateRange = async (fromDate = '', toDate = '') => {
+  try {
+    const params = {};
+    if (fromDate) params.from_date = fromDate;
+    if (toDate) params.to_date = toDate;
+    
+    const response = await api.get('/get-orders-sa', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching orders with date range:', error);
+    throw error;
+  }
+};
+
+// Fetch customer route by customer ID
+export const getCustomerRoute = async (customerId) => {
+  try {
+    const response = await api.get('/fetch-routes', { 
+      params: { customer_id: customerId } 
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customer route:', error);
+    throw error;
+  }
+};
+
+export const getAllRoutes = async () => {
+  try {
+    const response = await api.get(`/all_routes`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all routes:', error);
+    throw error;
+  }
+};

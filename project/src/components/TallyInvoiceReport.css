@@ -1,0 +1,152 @@
+/* TallyInvoiceReport.css */
+.tally-invoice-container {
+  padding: 20px;
+}
+
+.tally-invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.date-filter-export {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.date-filter {
+  display: flex;
+  gap: 15px;
+}
+
+.date-filter label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.date-filter input[type="date"] {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.export-button {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.export-button:hover {
+  background-color: #218838;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 20px;
+  color: #1976d2;
+  font-size: 16px;
+}
+
+.error-message {
+  color: #d32f2f;
+  text-align: center;
+  margin: 20px 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.no-invoices {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 16px;
+}
+
+.invoices-table-container {
+  overflow-x: auto;
+}
+
+.invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoices-table th,
+.invoices-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.invoices-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.invoices-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.invoice-row {
+  cursor: pointer;
+}
+
+.invoice-details-container {
+  padding: 10px;
+}
+
+.invoice-meta {
+  margin-bottom: 15px;
+}
+
+.invoice-meta div {
+  margin-bottom: 5px;
+}
+
+.invoice-items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-items-table th,
+.invoice-items-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.invoice-items-table th {
+  background-color: #fafafa;
+}
+
+.invoice-items-table tfoot td {
+  font-weight: bold;
+}
+
+.total-label {
+  text-align: right;
+}
+
+.total-amount {
+  text-align: left;
+}
+
+.filter-button {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.filter-button:hover {
+  background-color: #0056b3;
+}
