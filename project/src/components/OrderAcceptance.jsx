@@ -10,21 +10,26 @@ const OrderAcceptance = () => {
   const [toDate, setToDate] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState({});
   const [customerRoutes, setCustomerRoutes] = useState({});
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   // Set default date range to today and auto-fetch orders
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     setFromDate(today);
     setToDate(today);
+    console.log('OrderAcceptance - Setting default dates:', { fromDate: today, toDate: today });
     
     // Auto-fetch today's orders after setting default dates
     const autoFetchOrders = async () => {
       try {
         setLoading(true);
         const response = await getOrdersWithDateRange(today, today);
+        console.log('OrderAcceptance - API Response:', response);
         
-        if (response.status) {
-          const ordersList = response.orders || [];
+        if (response.data) {
+          const ordersList = response.data || [];
+          console.log('OrderAcceptance - Orders List:', ordersList);
           setOrders(ordersList);
           
           // Fetch customer routes for the new orders
@@ -34,7 +39,7 @@ const OrderAcceptance = () => {
             toast.info('No orders found for today');
           }
         } else {
-          toast.error(response.message || 'Failed to fetch today\'s orders');
+          toast.error('Failed to fetch today\'s orders');
         }
       } catch (error) {
         toast.error('Failed to fetch today\'s orders. Please try again.');
@@ -76,9 +81,11 @@ const OrderAcceptance = () => {
     try {
       setLoading(true);
       const response = await getOrdersWithDateRange(fromDate, toDate);
+      console.log('OrderAcceptance - Manual fetch response:', response);
       
-      if (response.status) {
-        const ordersList = response.orders || [];
+      if (response.data) {
+        const ordersList = response.data || [];
+        console.log('OrderAcceptance - Manual fetch orders:', ordersList);
         setOrders(ordersList);
         
         // Fetch customer routes for the new orders
@@ -88,7 +95,7 @@ const OrderAcceptance = () => {
           toast.info('No orders found for the selected date range');
         }
       } else {
-        toast.error(response.message || 'Failed to fetch orders');
+        toast.error('Failed to fetch orders');
       }
     } catch (error) {
       toast.error('Failed to fetch orders. Please try again.');
@@ -121,6 +128,99 @@ const OrderAcceptance = () => {
       toast.error('Failed to update order status. Please try again.');
     } finally {
       setUpdatingStatus(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  // Bulk operations functions
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const eligibleOrders = orders.filter(order => 
+      order.approve_status !== 'Accepted' && 
+      order.approve_status !== 'Rejected' && 
+      order.cancelled !== 'Yes'
+    );
+    
+    if (selectedOrders.size === eligibleOrders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(eligibleOrders.map(order => order.id)));
+    }
+  };
+
+  const handleBulkAccept = async () => {
+    if (selectedOrders.size === 0) {
+      toast.error('Please select at least one order');
+      return;
+    }
+
+    try {
+      setBulkUpdating(true);
+      const promises = Array.from(selectedOrders).map(orderId => 
+        updateOrderStatus(orderId, 'Accepted')
+      );
+      
+      const results = await Promise.allSettled(promises);
+      const successful = results.filter(result => result.status === 'fulfilled').length;
+      const failed = results.filter(result => result.status === 'rejected').length;
+      
+      if (successful > 0) {
+        toast.success(`${successful} order(s) accepted successfully!`);
+        await fetchOrders();
+        setSelectedOrders(new Set());
+      }
+      
+      if (failed > 0) {
+        toast.error(`${failed} order(s) failed to update`);
+      }
+    } catch (error) {
+      console.error('Error in bulk accept:', error);
+      toast.error('Failed to accept orders. Please try again.');
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (selectedOrders.size === 0) {
+      toast.error('Please select at least one order');
+      return;
+    }
+
+    try {
+      setBulkUpdating(true);
+      const promises = Array.from(selectedOrders).map(orderId => 
+        updateOrderStatus(orderId, 'Rejected')
+      );
+      
+      const results = await Promise.allSettled(promises);
+      const successful = results.filter(result => result.status === 'fulfilled').length;
+      const failed = results.filter(result => result.status === 'rejected').length;
+      
+      if (successful > 0) {
+        toast.success(`${successful} order(s) rejected successfully!`);
+        await fetchOrders();
+        setSelectedOrders(new Set());
+      }
+      
+      if (failed > 0) {
+        toast.error(`${failed} order(s) failed to update`);
+      }
+    } catch (error) {
+      console.error('Error in bulk reject:', error);
+      toast.error('Failed to reject orders. Please try again.');
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -182,6 +282,45 @@ const OrderAcceptance = () => {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {orders.length > 0 && (
+        <div className="bulk-actions-container mb-4 p-4 bg-gray-50 rounded-lg border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium text-gray-700">
+                {selectedOrders.size} order(s) selected
+              </span>
+              <button
+                onClick={handleSelectAll}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                {selectedOrders.size === orders.filter(order => 
+                  order.approve_status !== 'Accepted' && 
+                  order.approve_status !== 'Rejected' && 
+                  order.cancelled !== 'Yes'
+                ).length ? 'Deselect All' : 'Select All Eligible'}
+              </button>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={handleBulkAccept}
+                disabled={bulkUpdating || selectedOrders.size === 0}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
+              >
+                {bulkUpdating ? 'Processing...' : `Accept Selected (${selectedOrders.size})`}
+              </button>
+              <button
+                onClick={handleBulkReject}
+                disabled={bulkUpdating || selectedOrders.size === 0}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
+              >
+                {bulkUpdating ? 'Processing...' : `Reject Selected (${selectedOrders.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="loading-spinner">Fetching orders...</div>
       ) : (
@@ -190,6 +329,18 @@ const OrderAcceptance = () => {
             <table className="orders-table">
               <thead>
                 <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      checked={selectedOrders.size === orders.filter(order => 
+                        order.approve_status !== 'Accepted' && 
+                        order.approve_status !== 'Rejected' && 
+                        order.cancelled !== 'Yes'
+                      ).length && selectedOrders.size > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th>Order ID</th>
                   <th>Customer ID</th>
                   <th>Customer Route</th>
@@ -205,6 +356,15 @@ const OrderAcceptance = () => {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id} className="order-row">
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.has(order.id)}
+                        onChange={() => handleSelectOrder(order.id)}
+                        disabled={order.approve_status === 'Accepted' || order.approve_status === 'Rejected' || order.cancelled === 'Yes'}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                    </td>
                     <td className="font-semibold">#{order.id}</td>
                     <td>{order.customer_id || 'N/A'}</td>
                     <td>{customerRoutes[order.customer_id] || 'Loading...'}</td>
@@ -246,26 +406,29 @@ const OrderAcceptance = () => {
                     </td>
                     <td>
                       <div className="order-acceptance-actions">
-                        {order.approve_status !== 'Accepted' && order.cancelled !== 'Yes' && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'Accepted')}
-                            disabled={updatingStatus[order.id]}
-                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
-                          >
-                            {updatingStatus[order.id] ? 'Updating...' : 'Accept'}
-                          </button>
-                        )}
-                        {order.approve_status !== 'Rejected' && order.cancelled !== 'Yes' && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'Rejected')}
-                            disabled={updatingStatus[order.id]}
-                            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
-                          >
-                            {updatingStatus[order.id] ? 'Updating...' : 'Reject'}
-                          </button>
-                        )}
-                        {order.cancelled === 'Yes' && (
-                          <span className="text-gray-500 text-sm italic">Order Cancelled</span>
+                        {order.cancelled === 'Yes' ? (
+                          <span className="text-gray-500 text-sm italic font-medium">Order Cancelled</span>
+                        ) : order.approve_status === 'Accepted' ? (
+                          <span className="text-green-600 text-sm font-medium">Already Accepted</span>
+                        ) : order.approve_status === 'Rejected' ? (
+                          <span className="text-red-600 text-sm font-medium">Already Rejected</span>
+                        ) : (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'Accepted')}
+                              disabled={updatingStatus[order.id]}
+                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
+                            >
+                              {updatingStatus[order.id] ? 'Updating...' : 'Accept'}
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'Rejected')}
+                              disabled={updatingStatus[order.id]}
+                              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
+                            >
+                              {updatingStatus[order.id] ? 'Updating...' : 'Reject'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>

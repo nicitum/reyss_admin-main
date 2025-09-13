@@ -29,6 +29,7 @@ export default function ProductsTab() {
     price_p3: "",
     price_p4: "",
     price_p5: "",
+    price_p6: "",
   });
   const [bulkEdit, setBulkEdit] = useState({
     price: "",
@@ -47,6 +48,7 @@ export default function ProductsTab() {
     price_p3: "",
     price_p4: "",
     price_p5: "",
+    price_p6: "",
   });
 
   useEffect(() => {
@@ -81,6 +83,12 @@ export default function ProductsTab() {
         discountPrice: "",
         hsn_code: "", // Add this
         gst_rate: "", // Add this
+        price_p1: "",
+        price_p2: "",
+        price_p3: "",
+        price_p4: "",
+        price_p5: "",
+        price_p6: "",
       });
       toast.success("Product added successfully");
     } catch (error) {
@@ -258,186 +266,216 @@ export default function ProductsTab() {
 
       {/* Add Product Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h3 className="text-lg font-medium mb-4">Add New Product</h3>
-            <form onSubmit={handleAddProduct} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter product name"
-                  value={newProduct.name}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, name: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter brand"
-                  value={newProduct.brand}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, brand: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter category"
-                  value={newProduct.category}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, category: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Price
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={newProduct.price}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, price: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Discount Price
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={newProduct.discountPrice}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      discountPrice: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Add New Product</h3>
+            </div>
+            <form onSubmit={handleAddProduct} className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Half - Basic Product Information */}
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Product Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter product name"
+                          value={newProduct.name}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, name: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Brand
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter brand"
+                          value={newProduct.brand}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, brand: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter category"
+                          value={newProduct.category}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, category: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          HSN Code
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter HSN code"
+                          value={newProduct.hsn_code}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, hsn_code: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          GST Rate (%)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Enter GST rate"
+                          value={newProduct.gst_rate}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, gst_rate: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Half - Pricing Information */}
+                <div className="space-y-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Pricing Information</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Base Price
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="0.00"
+                          value={newProduct.price}
+                          onChange={(e) =>
+                            setNewProduct({ ...newProduct, price: e.target.value })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount Price
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="0.00"
+                          value={newProduct.discountPrice}
+                          onChange={(e) =>
+                            setNewProduct({
+                              ...newProduct,
+                              discountPrice: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      
+                      {/* Price Tiers */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P1</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p1}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p1: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P2</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p2}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p2: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P3</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p3}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p3: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P4</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p4}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p4: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P5</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p5}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p5: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P6</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={newProduct.price_p6}
+                            onChange={(e) => setNewProduct({ ...newProduct, price_p6: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Additional price tiers */}
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P1</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={newProduct.price_p1}
-                    onChange={(e) => setNewProduct({ ...newProduct, price_p1: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P2</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={newProduct.price_p2}
-                    onChange={(e) => setNewProduct({ ...newProduct, price_p2: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P3</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={newProduct.price_p3}
-                    onChange={(e) => setNewProduct({ ...newProduct, price_p3: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P4</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={newProduct.price_p4}
-                    onChange={(e) => setNewProduct({ ...newProduct, price_p4: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P5</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={newProduct.price_p5}
-                    onChange={(e) => setNewProduct({ ...newProduct, price_p5: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  HSN Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter HSN code"
-                  value={newProduct.hsn_code}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, hsn_code: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  GST Rate
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="GST %"
-                  value={newProduct.gst_rate}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, gst_rate: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+                  className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
                 >
                   Add Product
                 </button>
@@ -449,221 +487,250 @@ export default function ProductsTab() {
 
       {/* Edit Product Modal */}
       {showProductEditModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h3 className="text-lg font-medium mb-4">Edit Product</h3>
-            <form onSubmit={handleEditProduct} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter product name"
-                  value={currentProduct.name}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      name: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter brand"
-                  value={currentProduct.brand}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      brand: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter category"
-                  value={currentProduct.category}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      category: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Price
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={currentProduct.price}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      price: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Discount Price
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="0.00"
-                  value={currentProduct.discountPrice}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      discountPrice: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Edit Product</h3>
+            </div>
+            <form onSubmit={handleEditProduct} className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Half - Basic Product Information */}
+                <div className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Product Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter product name"
+                          value={currentProduct.name}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              name: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Brand
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter brand"
+                          value={currentProduct.brand}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              brand: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter category"
+                          value={currentProduct.category}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              category: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          HSN Code
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter HSN code"
+                          value={currentProduct.hsn_code}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              hsn_code: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          GST Rate (%)
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Enter GST rate"
+                          value={currentProduct.gst_rate}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              gst_rate: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Enable Product</label>
+                        <select
+                          value={isEnabled(currentProduct) ? "Yes" : (currentProduct.enable_product || "No")}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              enable_product: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        >
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Half - Pricing Information */}
+                <div className="space-y-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Pricing Information</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Base Price
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="0.00"
+                          value={currentProduct.price}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              price: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount Price
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="0.00"
+                          value={currentProduct.discountPrice}
+                          onChange={(e) =>
+                            setCurrentProduct({
+                              ...currentProduct,
+                              discountPrice: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        />
+                      </div>
+                      
+                      {/* Price Tiers */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P1</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p1}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p1: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P2</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p2}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p2: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P3</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p3}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p3: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P4</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p4}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p4: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P5</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p5}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p5: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price P6</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={currentProduct.price_p6}
+                            onChange={(e) => setCurrentProduct({ ...currentProduct, price_p6: e.target.value })}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Additional price tiers in edit */}
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P1</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={currentProduct.price_p1}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price_p1: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P2</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={currentProduct.price_p2}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price_p2: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P3</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={currentProduct.price_p3}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price_p3: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P4</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={currentProduct.price_p4}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price_p4: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Price P5</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={currentProduct.price_p5}
-                    onChange={(e) => setCurrentProduct({ ...currentProduct, price_p5: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Enable Product</label>
-                <select
-                  value={isEnabled(currentProduct) ? "Yes" : (currentProduct.enable_product || "No")}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      enable_product: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                >
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  HSN Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter HSN code"
-                  value={currentProduct.hsn_code}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      hsn_code: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  GST Rate
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="GST %"
-                  value={currentProduct.gst_rate}
-                  onChange={(e) =>
-                    setCurrentProduct({
-                      ...currentProduct,
-                      gst_rate: e.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
+              {/* Form Actions */}
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => setShowProductEditModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                  className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+                  className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
                 >
                   Update Product
                 </button>

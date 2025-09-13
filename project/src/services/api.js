@@ -6,7 +6,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("authToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -367,7 +367,7 @@ export const getOrdersWithDateRange = async (fromDate = '', toDate = '') => {
     if (fromDate) params.from_date = fromDate;
     if (toDate) params.to_date = toDate;
     
-    const response = await api.get('/get-orders-sa', { params });
+    const response = await api.get('/get-all-orders', { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching orders with date range:', error);
@@ -394,6 +394,136 @@ export const getAllRoutes = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching all routes:', error);
+    throw error;
+  }
+};
+
+export const getBrandReport = async (fromDate, toDate, orderType, brand) => {
+  try {
+    const response = await api.get(`/brand_report`, {
+      params: {
+        from_date: fromDate,
+        to_date: toDate,
+        order_type: orderType,
+        brand: brand
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching brand report:', error);
+    throw error;
+  }
+};
+
+export const getUniqueBrands = async () => {
+  try {
+    const response = await api.get(`/fetch_unique_brands`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching unique brands:', error);
+    throw error;
+  }
+};
+
+// Route Masters CRUD API functions
+export const getRoutes = async () => {
+  try {
+    const response = await api.get('/routes_crud');
+    // Sort routes by ID in ascending order (1, 2, 3...)
+    const sortedRoutes = response.data.sort((a, b) => a.id - b.id);
+    return sortedRoutes;
+  } catch (error) {
+    console.error('Error fetching routes:', error);
+    throw error;
+  }
+};
+
+export const getRouteById = async (id) => {
+  try {
+    const response = await api.get(`/routes_crud/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching route:', error);
+    throw error;
+  }
+};
+
+export const addRoute = async (routeData) => {
+  try {
+    const response = await api.post('/routes_crud', routeData);
+    return response.data;
+  } catch (error) {
+    console.error('Error adding route:', error);
+    throw error;
+  }
+};
+
+export const updateRoute = async (id, routeData) => {
+  try {
+    const response = await api.put(`/routes_crud/${id}`, routeData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating route:', error);
+    throw error;
+  }
+};
+
+export const deleteRoute = async (id) => {
+  try {
+    const response = await api.delete(`/routes_crud/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting route:', error);
+    throw error;
+  }
+};
+
+// Update order with products and total amount
+export const updateOrder = async (orderId, products, totalAmount) => {
+  try {
+    const response = await api.post('/order_update', {
+      orderId,
+      products,
+      totalAmount
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating order:', error);
+    throw error;
+  }
+};
+
+// Delete order product by product ID
+export const deleteOrderProduct = async (orderProductId) => {
+  try {
+    const response = await api.delete(`/delete_order_product/${orderProductId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting order product:', error);
+    throw error;
+  }
+};
+
+// Cancel order by order ID
+export const cancelOrder = async (orderId) => {
+  try {
+    const response = await api.post(`/cancel_order/${orderId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    throw error;
+  }
+};
+
+// Bulk reassign customers to different admins based on route changes
+export const bulkReassignCustomersAdmin = async (customerAssignments) => {
+  try {
+    const response = await api.post('/bulk-reassign-customers-admin', {
+      customer_assignments: customerAssignments
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error in bulk reassigning customers:', error);
     throw error;
   }
 };

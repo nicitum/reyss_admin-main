@@ -3,16 +3,19 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import UsersTab from './UsersTab';
 import ProductsTab from './ProductsTab';
+import RouteMasters from './RouteMasters';
+import RouteSwap from './RouteSwap';
 
 import AdminRoutes from './AdminRoutes';
 
 
 import AdminUserDetails from './AdminUsersDetails';
 import AdminOrdersReport from './AdminOrdersReport';
-
+import BrandWiseReport from './BrandWiseReport';
 import UpdateOrderPrices from './UpdateOrderPrices';
 import TallyInvoiceReport from './TallyInvoiceReport';
 import TallyReceiptReport from './TallyReceiptReport';
+import LoadingSlip from './LoadingSlip';
 import PlaceIndent from './PlaceIndent';
 import OrderAcceptance from './OrderAcceptance';
 
@@ -52,15 +55,19 @@ export default function Dashboard() {
           <Route path="/users" element={<UsersTab />} />
       
           <Route path="/products" element={<ProductsTab />} />
+          <Route path="/route-masters" element={<RouteMasters />} />
+          <Route path="/routeswap" element={<RouteSwap />} />
           <Route path="/adminRoutes" element={<AdminRoutes />} /> {/* Add this route */}
         
           <Route path="/adminusersDetails" element={<AdminUserDetails />} />
           <Route path="/adminordersreport" element={<AdminOrdersReport />} />
+          <Route path="/brandwisereport" element={<BrandWiseReport />} />
 
           <Route path="/updateorderprices" element={<UpdateOrderPrices />} />
           <Route path="/orderacceptance" element={<OrderAcceptance />} />
           <Route path="/tallyinvoicereport" element={<TallyInvoiceReport />} />
           <Route path="/tallyreceiptreport" element={<TallyReceiptReport />} />
+          <Route path="/loadingslip" element={<LoadingSlip />} />
           <Route path="/placeindent" element={<PlaceIndent />} />
          
           

@@ -1,43 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { getAllOrders, getOrderProducts, updateOrderPrice, getProducts } from '../services/api';
+import { getOrderProducts, updateOrderPrice, getProducts, getOrdersWithDateRange, updateOrder, deleteOrderProduct, cancelOrder } from '../services/api';
 import './OrderManagement.css';
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [productsLoading, setProductsLoading] = useState({});
   const [orderProducts, setOrderProducts] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editedPrices, setEditedPrices] = useState({});
+  const [editedQuantities, setEditedQuantities] = useState({});
   const [productsMaster, setProductsMaster] = useState([]);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [availableProducts, setAvailableProducts] = useState([]);
   const navigate = useNavigate();
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getAllOrders();
-      const allOrders = response || [];
-      const filteredOrders = allOrders.filter(order => {
-        const orderDate = new Date(order.placed_on * 1000);
-        const selectedDate = new Date(date);
-        return (
-          orderDate.getFullYear() === selectedDate.getFullYear() &&
-          orderDate.getMonth() === selectedDate.getMonth() &&
-          orderDate.getDate() === selectedDate.getDate()
-        );
-      });
-      setOrders(filteredOrders);
+      const response = await getOrdersWithDateRange(fromDate, toDate);
+      const ordersData = response?.data || [];
+      setOrders(ordersData);
     } catch (error) {
       toast.error('Failed to fetch orders. Please try again.');
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [fromDate, toDate]);
 
   const fetchProductsMaster = async () => {
     try {
@@ -77,7 +73,21 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [date]);
+  }, [fetchOrders]);
+
+  // Auto-fetch today's orders when component gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only auto-fetch if dates are set to today
+      const today = new Date().toISOString().split('T')[0];
+      if (fromDate === today && toDate === today) {
+        fetchOrders();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchOrders, fromDate, toDate]);
 
   useEffect(() => {
     fetchProductsMaster();
@@ -93,8 +103,86 @@ const OrderManagement = () => {
 
   const handleEditPrice = (productId, price, gstRate) => {
     setEditingProductId(productId);
+    // The price parameter is already the final price (base + GST)
+    // So we need to calculate the base price by removing GST
     const basePrice = price / (1 + (gstRate / 100));
     setEditedPrices(prev => ({ ...prev, [productId]: basePrice.toFixed(2) }));
+  };
+
+  const handleEditQuantity = (productId, currentQuantity) => {
+    setEditingProductId(productId);
+    setEditedQuantities(prev => ({ ...prev, [productId]: currentQuantity }));
+  };
+
+  const handleQuantityChange = (e, productId) => {
+    setEditedQuantities(prev => ({ ...prev, [productId]: parseInt(e.target.value) || 0 }));
+  };
+
+  const updateOrderTotal = (orderId) => {
+    const currentProducts = orderProducts[orderId] || [];
+    let newTotal = 0;
+
+    // Calculate new total based on current products and any edited quantities
+    for (const product of currentProducts) {
+      const productId = product.product_id;
+      const editedQuantity = editedQuantities[productId];
+      const editedPrice = editedPrices[productId];
+
+      let finalPrice = product.price;
+      let finalQuantity = product.quantity;
+
+      // Use edited price if available
+      if (editedPrice !== undefined) {
+        const basePrice = parseFloat(editedPrice);
+        finalPrice = basePrice + (basePrice * (product.gst_rate / 100));
+      }
+
+      // Use edited quantity if available
+      if (editedQuantity !== undefined) {
+        finalQuantity = editedQuantity;
+      }
+
+      newTotal += finalPrice * finalQuantity;
+    }
+
+    // Update the orders list with the new total
+    setOrders(prev => prev.map(order => 
+      order.id === orderId 
+        ? { ...order, total_amount: newTotal }
+        : order
+    ));
+  };
+
+  const handleCancelOrder = async (orderId, customerId) => {
+    if (!window.confirm(`Are you sure you want to cancel order #${orderId} for customer ${customerId}?`)) {
+      return;
+    }
+
+    try {
+      const response = await cancelOrder(orderId);
+      
+      if (response.success) {
+        toast.success(`Order #${orderId} cancelled successfully!`);
+        
+        // Refresh the orders list to show updated status
+        await fetchOrders();
+      } else {
+        toast.error(response.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      toast.error('Failed to cancel order. Please try again.');
+      console.error('Error cancelling order:', error);
+    }
+  };
+
+  const handleAddProduct = (orderId) => {
+    setSelectedOrderId(orderId);
+    setShowAddProductModal(true);
+    // Filter out products that are already in the order
+    const currentOrderProducts = orderProducts[orderId] || [];
+    const currentProductIds = currentOrderProducts.map(p => p.product_id);
+    const available = productsMaster.filter(p => !currentProductIds.includes(p.id || p.product_id || p._id));
+    setAvailableProducts(available);
   };
 
   const getTierPricesForProduct = (productId) => {
@@ -107,9 +195,10 @@ const OrderManagement = () => {
       .map(t => ({ key: t.key, value: Number(t.value) }));
   };
 
-  const handleSelectTierPrice = (productId, gstRate, totalPrice) => {
-    const base = Number(totalPrice) / (1 + (Number(gstRate) / 100));
-    setEditedPrices(prev => ({ ...prev, [productId]: base.toFixed(2) }));
+  const handleSelectTierPrice = (productId, gstRate, tierPrice) => {
+    // tierPrice is the BASE PRICE, not the final price
+    // So we use it directly as the base price
+    setEditedPrices(prev => ({ ...prev, [productId]: Number(tierPrice).toFixed(2) }));
   };
 
   const handlePriceChange = (e, productId) => {
@@ -133,12 +222,22 @@ const OrderManagement = () => {
 
       const gstRate = productDetails.gst_rate;
       const basePrice = parseFloat(currentEditedPrice);
-      const finalPrice = basePrice * (1 + (gstRate / 100));
+      // Final Price = Base Price + GST
+      const finalPrice = basePrice + (basePrice * (gstRate / 100));
 
       const orderPriceResponse = await updateOrderPrice(orderId, productId, finalPrice);
       if (orderPriceResponse && orderPriceResponse.status === 200) {
         toast.success('Price updated successfully!');
-        fetchOrderProducts(orderId);
+        
+        // Update the order total immediately
+        updateOrderTotal(orderId);
+        
+        // Refresh order products immediately
+        await fetchOrderProducts(orderId);
+        
+        // Refresh the orders list to show updated total amounts
+        await fetchOrders();
+        
         setEditingProductId(null);
         setEditedPrices(prev => {
           const newState = { ...prev };
@@ -154,17 +253,142 @@ const OrderManagement = () => {
     }
   };
 
+  const handleDeleteItem = async (orderId, productId, productName) => {
+    if (!window.confirm(`Are you sure you want to delete "${productName}" from this order?`)) {
+      return;
+    }
+
+    try {
+      // Call the delete API
+      const response = await deleteOrderProduct(productId);
+      
+      if (response.success) {
+        toast.success('Item deleted successfully!');
+        
+        // Update the order total immediately
+        updateOrderTotal(orderId);
+        
+        // Refresh the order products immediately
+        await fetchOrderProducts(orderId);
+        
+        // Refresh the orders list to show updated total amounts
+        await fetchOrders();
+        
+        // Clear any edited values for this product
+        setEditedPrices(prev => {
+          const newState = { ...prev };
+          delete newState[productId];
+          return newState;
+        });
+        setEditedQuantities(prev => {
+          const newState = { ...prev };
+          delete newState[productId];
+          return newState;
+        });
+        
+        // Exit edit mode if this product was being edited
+        if (editingProductId === productId) {
+          setEditingProductId(null);
+        }
+      } else {
+        toast.error(response.message || 'Failed to delete item');
+      }
+    } catch (error) {
+      toast.error('Failed to delete item. Please try again.');
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  const handleSaveOrderChanges = async (orderId) => {
+    try {
+      const currentProducts = orderProducts[orderId] || [];
+      
+      // Check if there are any products left in the order
+      if (currentProducts.length === 0) {
+        toast.error('Please add at least one item to the order before saving.');
+        return;
+      }
+
+      const updatedProducts = [];
+      let totalAmount = 0;
+
+      // Process only the products that are currently in the frontend state
+      for (const product of currentProducts) {
+        const productId = product.product_id;
+        const editedPrice = editedPrices[productId];
+        const editedQuantity = editedQuantities[productId];
+
+        let finalPrice = product.price;
+        let finalQuantity = product.quantity;
+
+        if (editedPrice !== undefined) {
+          const basePrice = parseFloat(editedPrice);
+          // Final Price = Base Price + GST
+          finalPrice = basePrice + (basePrice * (product.gst_rate / 100));
+        }
+
+        if (editedQuantity !== undefined) {
+          finalQuantity = editedQuantity;
+        }
+
+        updatedProducts.push({
+          order_id: orderId,
+          product_id: productId,
+          quantity: finalQuantity,
+          price: finalPrice,
+          gst_rate: product.gst_rate,
+          name: product.name,
+          category: product.category,
+          is_new: false
+        });
+
+        totalAmount += finalPrice * finalQuantity;
+      }
+
+      // Call the order update API with only the current frontend items
+      const response = await updateOrder(orderId, updatedProducts, totalAmount);
+      
+      if (response.success) {
+        toast.success(`Order updated successfully! ${updatedProducts.length} items saved.`);
+        
+        // Refresh the order products immediately
+        await fetchOrderProducts(orderId);
+        
+        // Refresh the orders list to show updated total amounts
+        await fetchOrders();
+        
+        // Clear edited values
+        setEditedPrices({});
+        setEditedQuantities({});
+        setEditingProductId(null);
+      } else {
+        toast.error(response.message || 'Failed to update order');
+      }
+    } catch (error) {
+      toast.error('Failed to update order. Please try again.');
+      console.error('Error updating order:', error);
+    }
+  };
+
   return (
     <div className="order-management-container">
       <div className="order-management-header">
         <h1>Order Management</h1>
         <div className="filter-controls">
           <div className="filter-group">
-            <label>Filter by Date:</label>
+            <label>From Date:</label>
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+          <div className="filter-group">
+            <label>To Date:</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
             />
           </div>
         </div>
@@ -182,6 +406,7 @@ const OrderManagement = () => {
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Order Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -213,15 +438,45 @@ const OrderManagement = () => {
                           year: 'numeric'
                         })}
                       </td>
+                      <td>
+                        <button
+                          onClick={() => handleCancelOrder(order.id, order.customer_id)}
+                          className="btn-cancel-order"
+                          disabled={order.cancelled === 'Yes'}
+                          title={order.cancelled === 'Yes' ? 'Order already cancelled' : `Cancel order #${order.id}`}
+                        >
+                          {order.cancelled === 'Yes' ? 'Cancelled' : 'Cancel Order'}
+                        </button>
+                      </td>
                     </tr>
                     {expandedOrderId === order.id && (
                       <tr className="product-details-row">
-                        <td colSpan="5">
+                        <td colSpan="6">
                           {productsLoading[order.id] ? (
                             <div className="loading-products">Loading products...</div>
                           ) : (
                             <div className="products-container">
-                              <h4>Order Products</h4>
+                              <div className="products-header">
+                                <h4>Order Products {order.cancelled === 'Yes' && <span className="cancelled-badge">(CANCELLED)</span>}</h4>
+                                <div className="products-actions">
+                                  <button 
+                                    onClick={() => handleAddProduct(order.id)}
+                                    className="btn-add-product"
+                                    disabled={order.cancelled === 'Yes'}
+                                    title={order.cancelled === 'Yes' ? 'Cannot add products to cancelled order' : 'Add Product'}
+                                  >
+                                    Add Product
+                                  </button>
+                                  <button 
+                                    onClick={() => handleSaveOrderChanges(order.id)}
+                                    className="btn-save-changes"
+                                    disabled={order.cancelled === 'Yes' || !orderProducts[order.id] || orderProducts[order.id].length === 0}
+                                    title={order.cancelled === 'Yes' ? 'Cannot save changes to cancelled order' : (!orderProducts[order.id] || orderProducts[order.id].length === 0 ? "Add at least one item to save" : `Save ${orderProducts[order.id]?.length || 0} items`)}
+                                  >
+                                    Save All Changes {orderProducts[order.id]?.length > 0 && `(${orderProducts[order.id].length} items)`}
+                                  </button>
+                                </div>
+                              </div>
                               {orderProducts[order.id]?.length > 0 ? (
                                 <table className="products-table-detail">
                                   <thead>
@@ -240,24 +495,57 @@ const OrderManagement = () => {
                                       <tr key={`${order.id}-${product.product_id}`} className="products-table-data-row">
                                         <td className="product-col">{product.name}</td>
                                         <td className="category-col">{product.category}</td>
-                                        <td className="quantity-col">{product.quantity}</td>
+                                        <td className="quantity-col">
+                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
+                                            <div className="quantity-edit-container">
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                value={editedQuantities[product.product_id] !== undefined ? editedQuantities[product.product_id] : product.quantity}
+                                                onChange={(e) => handleQuantityChange(e, product.product_id)}
+                                                className="quantity-input"
+                                              />
+                                              <div className="quantity-edit-buttons">
+                                                <button 
+                                                  className="btn-save-quantity"
+                                                  onClick={() => {
+                                                    setEditingProductId(null);
+                                                    // Update the order total immediately when quantity is saved
+                                                    updateOrderTotal(order.id);
+                                                  }}
+                                                >
+                                                  ✓
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div 
+                                              className={`quantity-display ${order.cancelled === 'Yes' ? 'disabled' : ''}`}
+                                              onClick={() => order.cancelled !== 'Yes' && handleEditQuantity(product.product_id, product.quantity)}
+                                              title={order.cancelled === 'Yes' ? 'Cannot edit cancelled order' : "Click to edit quantity"}
+                                            >
+                                              {product.quantity}
+                                              {order.cancelled !== 'Yes' && <span className="edit-icon">✏️</span>}
+                                            </div>
+                                          )}
+                                        </td>
                                         <td className="price-col">
-                                          {editingProductId === product.product_id ? (
+                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
                                             <div className="edit-price-container">
                                               <div className="price-edit-compact">
                                                 {/* Horizontal tier selection */}
                                                 <div className="tier-selection-horizontal">
                                                   <div className="tier-buttons-row">
                                                     {getTierPricesForProduct(product.product_id).map(t => {
-                                                      const currentTotal = parseFloat(editedPrices[product.product_id] || 0) * (1 + (product.gst_rate / 100));
-                                                      const isActive = editedPrices[product.product_id] && Math.abs(Number(t.value) - currentTotal) < 0.01;
+                                                      const currentBase = parseFloat(editedPrices[product.product_id] || 0);
+                                                      const isActive = editedPrices[product.product_id] && Math.abs(Number(t.value) - currentBase) < 0.01;
                                                       
                                                       return (
                                                         <button
                                                           key={t.key}
                                                           className={`tier-btn ${isActive ? 'active' : ''}`}
                                                           onClick={() => handleSelectTierPrice(product.product_id, product.gst_rate, Number(t.value))}
-                                                          title={`${t.key}: ₹${t.value.toFixed(2)}`}
+                                                          title={`${t.key}: Base ₹${t.value.toFixed(2)} (Final: ₹${(Number(t.value) + (Number(t.value) * (product.gst_rate / 100))).toFixed(2)})`}
                                                         >
                                                           <span className="tier-short">{t.key}</span>
                                                           <span className="tier-amount">₹{t.value.toFixed(2)}</span>
@@ -271,38 +559,38 @@ const OrderManagement = () => {
                                                 <div className="price-input-compact">
                                                   <div className="input-row">
                                                     <label className="compact-label">Base:</label>
-                                                    <input
-                                                      type="number"
+                                                <input
+                                                  type="number"
                                                       step="0.01"
                                                       min="0"
-                                                      value={editedPrices[product.product_id] || ''}
-                                                      onChange={(e) => handlePriceChange(e, product.product_id)}
+                                                  value={editedPrices[product.product_id] || ''}
+                                                  onChange={(e) => handlePriceChange(e, product.product_id)}
                                                       className="compact-input"
                                                       placeholder="0.00"
                                                       readOnly={(() => {
                                                         if (!editedPrices[product.product_id]) return true;
-                                                        const currentTotal = parseFloat(editedPrices[product.product_id] || 0) * (1 + (product.gst_rate / 100));
+                                                        const currentBase = parseFloat(editedPrices[product.product_id] || 0);
                                                         const hasMatchingTier = getTierPricesForProduct(product.product_id).some(t => 
-                                                          Math.abs(Number(t.value) - currentTotal) < 0.01
+                                                          Math.abs(Number(t.value) - currentBase) < 0.01
                                                         );
                                                         return hasMatchingTier;
                                                       })()}
-                                                    />
-                                                  </div>
+                                                />
+                                              </div>
                                                   
                                                   <div className="price-preview">
                                                     <span className="preview-item">GST: ₹{(parseFloat(editedPrices[product.product_id] || 0) * (product.gst_rate / 100)).toFixed(2)}</span>
-                                                    <span className="preview-total">Total: ₹{(parseFloat(editedPrices[product.product_id] || 0) * (1 + (product.gst_rate / 100))).toFixed(2)}</span>
+                                                    <span className="preview-total">Total: ₹{(parseFloat(editedPrices[product.product_id] || 0) + (parseFloat(editedPrices[product.product_id] || 0) * (product.gst_rate / 100))).toFixed(2)}</span>
                                                   </div>
                                                 </div>
                                               </div>
                                             </div>
                                           ) : (
-                                            <>
+                                            <div className="price-display">
                                               <div>Base: ₹{((product.price / (1 + (product.gst_rate / 100)))).toFixed(2)}</div>
                                               <div>GST ({product.gst_rate}%): ₹{(product.price - (product.price / (1 + (product.gst_rate / 100)))).toFixed(2)}</div>
                                               <div>Total: ₹{product.price?.toFixed(2)}</div>
-                                            </>
+                                            </div>
                                           )}
                                         </td>
                                         <td className="gst-rate-col">{product.gst_rate}%</td>
@@ -310,14 +598,34 @@ const OrderManagement = () => {
                                           ₹{(product.price * product.quantity).toLocaleString()}
                                         </td>
                                         <td>
-                                          {editingProductId === product.product_id ? (
-                                            <button onClick={() => handleSavePrice(order.id, product.product_id)} className="save-button">
+                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
+                                            <div className="action-buttons">
+                                              <button onClick={() => handleSavePrice(order.id, product.product_id)} className="btn-save">
                                               Save
                                             </button>
+                                              <button onClick={() => setEditingProductId(null)} className="btn-cancel">
+                                                Cancel
+                                              </button>
+                                            </div>
                                           ) : (
-                                            <button onClick={() => handleEditPrice(product.product_id, product.price, product.gst_rate)} className="edit-button">
+                                            <div className="action-buttons">
+                                              <button 
+                                                onClick={() => order.cancelled !== 'Yes' && handleEditPrice(product.product_id, product.price, product.gst_rate)} 
+                                                className="btn-edit"
+                                                disabled={order.cancelled === 'Yes'}
+                                                title={order.cancelled === 'Yes' ? 'Cannot edit cancelled order' : `Edit ${product.name}`}
+                                              >
                                               Edit
                                             </button>
+                                              <button 
+                                                onClick={() => order.cancelled !== 'Yes' && handleDeleteItem(order.id, product.product_id, product.name)} 
+                                                className="btn-delete"
+                                                disabled={order.cancelled === 'Yes'}
+                                                title={order.cancelled === 'Yes' ? 'Cannot delete from cancelled order' : `Delete ${product.name}`}
+                                              >
+                                                🗑️
+                                              </button>
+                                            </div>
                                           )}
                                         </td>
                                       </tr>
@@ -325,7 +633,12 @@ const OrderManagement = () => {
                                   </tbody>
                                 </table>
                               ) : (
-                                <div className="no-products">No products found for this order</div>
+                                <div className="no-products">
+                                  <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                                    <p style={{ margin: '0 0 10px 0', fontSize: '16px' }}>No items in this order</p>
+                                    <p style={{ margin: '0', fontSize: '14px' }}>Click "Add Product" to add items to this order</p>
+                                  </div>
+                                </div>
                               )}
                             </div>
                           )}
@@ -336,8 +649,8 @@ const OrderManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="no-orders">
-                    No orders found for the selected date
+                  <td colSpan="6" className="no-orders">
+                    No orders found for the selected date range
                   </td>
                 </tr>
               )}
@@ -345,7 +658,132 @@ const OrderManagement = () => {
           </table>
         </div>
       )}
+
+      {/* Add Product Modal */}
+      {showAddProductModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Add Product to Order</h3>
+            <div className="modal-body">
+              <table className="modal-products-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {availableProducts.map((product) => (
+                    <AddProductRow 
+                      key={product.id || product.product_id || product._id}
+                      product={product}
+                      orderId={selectedOrderId}
+                      onClose={() => setShowAddProductModal(false)}
+                      onProductAdded={() => {
+                        setShowAddProductModal(false);
+                        fetchOrderProducts(selectedOrderId);
+                      }}
+                      onOrdersRefresh={fetchOrders}
+                      onDeleteItem={handleDeleteItem}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button 
+              onClick={() => setShowAddProductModal(false)}
+              className="btn-close-modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+};
+
+// Add Product Row Component
+const AddProductRow = ({ product, orderId, onClose, onProductAdded, onOrdersRefresh, onDeleteItem }) => {
+  const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
+
+  const handleAddToOrder = async () => {
+    if (quantity <= 0) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+
+    try {
+      setAdding(true);
+      const productId = product.id || product.product_id || product._id;
+      const basePrice = product.price_p1 || product.price || 0;
+      const gstRate = product.gst_rate || 0;
+      // Final Price = Base Price + GST
+      const finalPrice = basePrice + (basePrice * (gstRate / 100));
+
+      const newProduct = {
+        order_id: orderId,
+        product_id: productId,
+        quantity: quantity,
+        price: finalPrice,
+        gst_rate: gstRate,
+        name: product.name,
+        category: product.category,
+        is_new: true
+      };
+
+      const response = await updateOrder(orderId, [newProduct], 0);
+      
+      if (response.success) {
+        toast.success('Product added successfully!');
+        onProductAdded();
+        // Refresh orders list to show updated total amounts
+        if (onOrdersRefresh) {
+          onOrdersRefresh();
+        }
+      } else {
+        toast.error(response.message || 'Failed to add product');
+      }
+    } catch (error) {
+      toast.error('Failed to add product. Please try again.');
+      console.error('Error adding product:', error);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <tr>
+      <td>{product.name}</td>
+      <td>{product.category}</td>
+      <td>
+        ₹{((product.price_p1 || product.price || 0) + ((product.price_p1 || product.price || 0) * ((product.gst_rate || 0) / 100))).toFixed(2)}
+      </td>
+      <td>
+        <input
+          type="number"
+          min="1"
+          value={quantity}
+          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+          className="modal-quantity-input"
+        />
+      </td>
+      <td>
+        <div className="action-buttons">
+          <button
+            onClick={handleAddToOrder}
+            disabled={adding}
+            className="btn-add-to-order"
+          >
+            {adding ? 'Adding...' : 'Add'}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 };
 

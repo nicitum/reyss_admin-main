@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle } from "lucide-react";
+import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle, ChevronDown, ChevronRight, ArrowLeftRight, FileText } from "lucide-react";
 import LogoutButton from "./LogoutTab";
 
 const Sidebar = () => {
   const [adminRoutes, setAdminRoutes] = useState([]);
   const [userRole, setUserRole] = useState("");
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [isMastersOpen, setIsMastersOpen] = useState(false);
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
@@ -35,31 +37,75 @@ const Sidebar = () => {
         {/* Common Routes for all users */}
         
 
-        <NavLink
-          to="/dashboard/users"
-          className={({ isActive }) =>
-            `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
-              isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
-            }`
-          }
-        >
-          <Users className="mr-3" />
-          Users
-        </NavLink>
-
-       
-
-        <NavLink
-          to="/dashboard/products"
-          className={({ isActive }) =>
-            `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
-              isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
-            }`
-          }
-        >
-          <ShoppingBag className="mr-3" />
-          Products
-        </NavLink>
+        {/* Masters Dropdown */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsMastersOpen(!isMastersOpen)}
+            className="flex items-center justify-between w-full px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg text-gray-200"
+          >
+            <div className="flex items-center">
+              <Package className="mr-3" />
+              Masters
+            </div>
+            {isMastersOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isMastersOpen && (
+            <div className="ml-6 space-y-1">
+              <NavLink
+                to="/dashboard/users"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                    isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <Users className="mr-3" />
+                Users
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/products"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                    isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <ShoppingBag className="mr-3" />
+                Products
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/route-masters"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                    isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <MapPin className="mr-3" />
+                Route Masters
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/routeswap"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                    isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <ArrowLeftRight className="mr-3" />
+                Route Swap
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         <NavLink
           to="/dashboard/placeindent"
@@ -140,31 +186,75 @@ const Sidebar = () => {
 
 
 
-            <NavLink
-              to="/dashboard/tallyinvoicereport"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
-                  isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <BarChart className="mr-3" />
-              Tally Invoice Report
-            </NavLink>
-
-
-
-            <NavLink
-              to="/dashboard/tallyreceiptreport"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
-                  isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <BarChart className="mr-3" />
-              Tally Receipt Report
-            </NavLink>
+            {/* Reports Dropdown */}
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsReportsOpen(!isReportsOpen)}
+                className="flex items-center justify-between w-full px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg text-gray-200"
+              >
+                <div className="flex items-center">
+                  <BarChart className="mr-3" />
+                  Reports
+                </div>
+                {isReportsOpen ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </button>
+              
+              {isReportsOpen && (
+                <div className="ml-6 space-y-1">
+                  <NavLink
+                    to="/dashboard/tallyinvoicereport"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <BarChart className="mr-3" />
+                    Tally Invoice Report
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/dashboard/tallyreceiptreport"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <BarChart className="mr-3" />
+                    Tally Receipt Report
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/dashboard/loadingslip"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <FileText className="mr-3" />
+                    Loading Slip
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/dashboard/brandwisereport"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <BarChart className="mr-3" />
+                    Brand Wise Report
+                  </NavLink>
+                </div>
+              )}
+            </div>
           </>
         )}
 
