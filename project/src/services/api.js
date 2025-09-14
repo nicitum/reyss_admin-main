@@ -211,13 +211,19 @@ export const getAdminOrders = async (adminId, date = null) => {
 
 export const getOrderProducts = async (orderId) => {
   try {
-    // **Corrected API Call:** Use query parameters instead of path parameters
-    const response = await api.get(`/order-products`, { // Base path is just /order-products
-      params: { // Use 'params' to send query parameters
-        orderId: orderId // Send orderId as a query parameter
+    const response = await fetch(`http://82.112.226.135:8090/order-products?orderId=${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        'Content-Type': 'application/json'
       }
     });
-    return response.data;
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("Error fetching order products:", error);
     throw new Error("Failed to fetch order products");
@@ -525,5 +531,25 @@ export const bulkReassignCustomersAdmin = async (customerAssignments) => {
   } catch (error) {
     console.error('Error in bulk reassigning customers:', error);
     throw error;
+  }
+};
+
+// Post Invoice to API
+export const postInvoiceToAPI = async (orderId, invoiceId, orderPlacedOn) => {
+  try {
+    const invoiceDate = Math.floor(Date.now() / 1000); // Current time in epoch seconds
+
+    const response = await api.post('/invoice', {
+      order_id: orderId,
+      invoice_id: invoiceId,
+      order_date: parseInt(orderPlacedOn),
+      invoice_date: invoiceDate,
+    });
+
+    console.log("Invoice posted successfully:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error posting invoice to API:", error.response?.data || error.message);
+    throw new Error("Failed to save invoice data to server.");
   }
 };

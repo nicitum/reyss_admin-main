@@ -2,15 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { getOrdersWithDateRange, getCustomerRoute, getRoutes } from '../services/api';
 import { 
-  createLoadingSlipDataForRoute, 
-  generateExcelReport, 
+  createDeliverySlipDataForRoute, 
+  generateDeliveryExcelReport, 
   groupOrdersByRoute, 
-  updateLoadingSlipStatus,
   filterOrdersByRoutes 
-} from '../utils/loadingSlipHelper';
-import './LoadingSlip.css';
+} from '../utils/deliverySlipHelper';
+import './DeliverySlip.css';
 
-const LoadingSlip = () => {
+const DeliverySlip = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
@@ -24,7 +23,7 @@ const LoadingSlip = () => {
   const [routesLoading, setRoutesLoading] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState('');
   const [selectedRoutes, setSelectedRoutes] = useState([]);
-  const [loadingSlipData, setLoadingSlipData] = useState(null);
+  const [deliverySlipData, setDeliverySlipData] = useState(null);
   const [showDisplay, setShowDisplay] = useState(false);
 
   // Filter orders by selected route(s) and order type
@@ -87,11 +86,11 @@ const LoadingSlip = () => {
         console.log('Routes loaded successfully:', routesData.length, 'routes');
       } else {
         setRoutes([]);
-        toast.error('No routes found', { duration: 2000 });
+        toast.error('No routes found');
       }
     } catch (error) {
       console.error('Error fetching routes:', error);
-      toast.error('Failed to fetch routes: ' + error.message, { duration: 2000 });
+      toast.error('Failed to fetch routes: ' + error.message);
       setRoutes([]);
     } finally {
       setRoutesLoading(false);
@@ -131,7 +130,7 @@ const LoadingSlip = () => {
       // Fetch customer routes for the new orders
       await fetchCustomerRoutes(ordersData);
     } catch (error) {
-      toast.error('Failed to fetch orders. Please try again.', { duration: 2000 });
+      toast.error('Failed to fetch orders. Please try again.');
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
@@ -143,41 +142,35 @@ const LoadingSlip = () => {
     fetchRoutes();
   }, [fetchOrders, fetchRoutes]);
 
-
-
-
-
-  const handleGenerateLoadingSlip = async (downloadOnly = true) => {
-    const filteredOrders = getFilteredOrders();
-    
-    if (filteredOrders.length === 0) {
-      toast.error("No orders available to generate loading slips.", { duration: 2000 });
+  const handleGenerateDeliverySlip = async (downloadOnly = true) => {
+    if (orders.length === 0) {
+      toast.error("No orders available to generate delivery slips.");
       return;
     }
 
-    // Use selected orders if any are selected, otherwise use all eligible filtered orders
+    // Use selected orders if any are selected, otherwise use all eligible orders
     let ordersToProcess;
     if (selectedOrders.size > 0) {
-      ordersToProcess = filteredOrders.filter(order => selectedOrders.has(order.id) && order.cancelled !== 'Yes');
+      ordersToProcess = orders.filter(order => selectedOrders.has(order.id) && order.cancelled !== 'Yes');
       
       if (ordersToProcess.length === 0) {
-        toast.error("No eligible selected orders found. Please select non-cancelled orders.", { duration: 2000 });
+        toast.error("No eligible selected orders found. Please select non-cancelled orders.");
         return;
       }
       
-      toast.success(`Generating loading slips for ${ordersToProcess.length} selected orders.`, { duration: 2000 });
+      toast.success(`Generating delivery slips for ${ordersToProcess.length} selected orders.`);
     } else {
-      // Filter out cancelled orders - only process non-cancelled orders from filtered results
-      ordersToProcess = filteredOrders.filter(order => order.cancelled !== 'Yes');
+      // Filter out cancelled orders - only process non-cancelled orders
+      ordersToProcess = orders.filter(order => order.cancelled !== 'Yes');
       
       if (ordersToProcess.length === 0) {
-        toast.error("No eligible orders found. All orders are cancelled.", { duration: 2000 });
+        toast.error("No eligible orders found. All orders are cancelled.");
         return;
       }
 
-      if (ordersToProcess.length < filteredOrders.length) {
-        const cancelledCount = filteredOrders.length - ordersToProcess.length;
-        toast.success(`${cancelledCount} cancelled orders excluded from loading slip generation.`, { duration: 2000 });
+      if (ordersToProcess.length < orders.length) {
+        const cancelledCount = orders.length - ordersToProcess.length;
+        toast.success(`${cancelledCount} cancelled orders excluded from delivery slip generation.`);
       }
     }
 
@@ -188,40 +181,37 @@ const LoadingSlip = () => {
       const generatedSlips = [];
       
       for (const [routeName, ordersForRoute] of routesMap.entries()) {
-        const loadingSlipDataForRoute = await createLoadingSlipDataForRoute(ordersForRoute);
-        const excelData = await generateExcelReport(loadingSlipDataForRoute, 'Loading Slip', routeName, downloadOnly);
+        const deliverySlipDataForRoute = await createDeliverySlipDataForRoute(ordersForRoute, routeName);
+        const excelData = await generateDeliveryExcelReport(deliverySlipDataForRoute, 'Delivery Slip', routeName, downloadOnly);
         
         generatedSlips.push({
           routeName,
           orders: ordersForRoute,
           data: excelData
         });
-
-        // Update loading slip status for each order in the route
-        await updateLoadingSlipStatus(ordersForRoute);
       }
       
       // Store data for display if not downloading only
       if (!downloadOnly) {
-        console.log('Generated slips for display:', generatedSlips);
-        setLoadingSlipData(generatedSlips);
+        console.log('Generated delivery slips for display:', generatedSlips);
+        setDeliverySlipData(generatedSlips);
         setShowDisplay(true);
       }
       
-      toast.success(`Loading Slips generated for ${generatedSlips.length} route(s) and statuses updated.`, { duration: 2000 });
+      toast.success(`Delivery Slips generated for ${generatedSlips.length} route(s).`);
       clearSelection(); // Clear selection after successful generation
     } catch (error) {
-      console.error("Error generating loading slips:", error);
-      toast.error("Failed to generate loading slips.", { duration: 2000 });
+      console.error("Error generating delivery slips:", error);
+      toast.error("Failed to generate delivery slips.");
     } finally {
       setBulkUpdating(false);
     }
   };
 
   return (
-    <div className="order-management-container">
+    <div className="loading-slip-container">
       <div className="loading-slip-header">
-        <h1>Loading Slip Report</h1>
+        <h1>Delivery Slip Report</h1>
         <div className="filter-controls">
           <div className="date-filters">
             <div className="filter-group">
@@ -304,7 +294,7 @@ const LoadingSlip = () => {
             </div>
             <div className="flex space-x-3">
               <button
-                onClick={() => handleGenerateLoadingSlip(true)}
+                onClick={() => handleGenerateDeliverySlip(true)}
                 disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().filter(order => order.cancelled !== 'Yes').length === 0}
                 className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
@@ -314,7 +304,7 @@ const LoadingSlip = () => {
                     : `Download All Eligible (${getFilteredOrders().filter(order => order.cancelled !== 'Yes').length})`}
               </button>
               <button
-                onClick={() => handleGenerateLoadingSlip(false)}
+                onClick={() => handleGenerateDeliverySlip(false)}
                 disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().filter(order => order.cancelled !== 'Yes').length === 0}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
@@ -351,7 +341,6 @@ const LoadingSlip = () => {
                   <th>Order Type</th>
                   <th>Placed On</th>
                   <th>Cancelled</th>
-                  <th>Loading Slip</th>
                   <th>Approve Status</th>
                 </tr>
               </thead>
@@ -397,13 +386,6 @@ const LoadingSlip = () => {
                       </span>
                     </td>
                     <td>
-                      <span className={`status-indicator ${
-                        order.loading_slip === 'Yes' ? 'status-loading' : 'status-no'
-                      }`}>
-                        {order.loading_slip || 'No'}
-                      </span>
-                    </td>
-                    <td>
                       <span className="status-badge accepted">
                         {order.approve_status || 'N/A'}
                       </span>
@@ -424,17 +406,17 @@ const LoadingSlip = () => {
         <div className="loading-overlay">
           <div className="loading-content">
             <div className="loading-spinner-large"></div>
-            <p>Generating Loading Slip...</p>
+            <p>Generating Delivery Slip...</p>
           </div>
         </div>
       )}
 
-      {/* Loading Slip Display Modal */}
-      {showDisplay && loadingSlipData && (
-        <div className="loading-slip-display-modal">
+      {/* Delivery Slip Display Modal */}
+      {showDisplay && deliverySlipData && (
+        <div className="delivery-slip-display-modal">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Loading Slip Data</h2>
+              <h2>Delivery Slip Data</h2>
               <button 
                 onClick={() => setShowDisplay(false)}
                 className="close-btn"
@@ -443,8 +425,8 @@ const LoadingSlip = () => {
               </button>
             </div>
             <div className="modal-body">
-              {loadingSlipData && loadingSlipData.length > 0 ? (
-                loadingSlipData.map((slip, index) => (
+              {deliverySlipData && deliverySlipData.length > 0 ? (
+                deliverySlipData.map((slip, index) => (
                   <div key={index} className="slip-section">
                     <h3>Route: {slip.routeName}</h3>
                     <div className="slip-actions">
@@ -466,64 +448,39 @@ const LoadingSlip = () => {
                       </button>
                     </div>
                     <div className="slip-data">
-                      <h4>Products Summary</h4>
-                      {slip.data.productList && slip.data.productList.length > 0 ? (
-                        <table className="slip-table">
-                          <thead>
-                            <tr>
-                              <th>Product</th>
-                              <th>Quantity (Eaches)</th>
-                              <th>Base Units (Kgs/Lts)</th>
-                              <th>Crates</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {slip.data.productList.map((product, pIndex) => (
-                              <tr key={pIndex}>
-                                <td>{product.name}</td>
-                                <td>{product.quantity}</td>
-                                <td>{product.baseUnitQuantity}</td>
-                                <td>{product.crates}</td>
-                              </tr>
-                            ))}
-                            <tr className="totals-row">
-                              <td><strong>Totals</strong></td>
-                              <td><strong>{slip.data.productList.reduce((sum, product) => sum + (parseFloat(product.quantity) || 0), 0).toFixed(2)}</strong></td>
-                              <td><strong>{slip.data.productList.reduce((sum, product) => sum + (parseFloat(product.baseUnitQuantity) || 0), 0).toFixed(2)}</strong></td>
-                              <td><strong>{slip.data.productList.reduce((sum, product) => sum + (parseFloat(product.crates) || 0), 0)}</strong></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      ) : (
-                        <p>No products found for this route.</p>
-                      )}
-                      {slip.data.brandTotals && slip.data.brandTotals.length > 0 && (
-                        <>
-                          <h4>Brand Totals</h4>
-                          <table className="slip-table">
+                      <h4>Delivery Summary</h4>
+                      {slip.data.deliveryData && slip.data.deliveryData.length > 0 ? (
+                        <div className="delivery-table-container">
+                          <table className="delivery-table">
                             <thead>
                               <tr>
-                                <th>Brand</th>
+                                <th>Items</th>
+                                {slip.data.customerNames && slip.data.customerNames.map((name, idx) => (
+                                  <th key={idx} className="vertical-header">{name}</th>
+                                ))}
                                 <th>Total Crates</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {slip.data.brandTotals.map((brand, bIndex) => (
-                                <tr key={bIndex}>
-                                  <td>{brand.brand}</td>
-                                  <td>{brand.totalCrates}</td>
+                              {slip.data.deliveryData.map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex}>{cell}</td>
+                                  ))}
                                 </tr>
                               ))}
                             </tbody>
                           </table>
-                        </>
+                        </div>
+                      ) : (
+                        <p>No delivery data found for this route.</p>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="no-data">
-                  <p>No loading slip data available to display.</p>
+                  <p>No delivery slip data available to display.</p>
                 </div>
               )}
             </div>
@@ -534,4 +491,4 @@ const LoadingSlip = () => {
   );
 };
 
-export default LoadingSlip;
+export default DeliverySlip;

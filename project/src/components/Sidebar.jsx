@@ -242,6 +242,18 @@ const Sidebar = () => {
                   </NavLink>
                   
                   <NavLink
+                    to="/dashboard/deliveryslip"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <FileText className="mr-3" />
+                    Delivery Slip
+                  </NavLink>
+                  
+                  <NavLink
                     to="/dashboard/brandwisereport"
                     className={({ isActive }) =>
                       `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
@@ -251,6 +263,18 @@ const Sidebar = () => {
                   >
                     <BarChart className="mr-3" />
                     Brand Wise Report
+                  </NavLink>
+                  
+                  <NavLink
+                    to="/dashboard/invoice"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                        isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <FileText className="mr-3" />
+                    Invoice
                   </NavLink>
                 </div>
               )}

@@ -16,8 +16,10 @@ import UpdateOrderPrices from './UpdateOrderPrices';
 import TallyInvoiceReport from './TallyInvoiceReport';
 import TallyReceiptReport from './TallyReceiptReport';
 import LoadingSlip from './LoadingSlip';
+import DeliverySlip from './DeliverySlip';
 import PlaceIndent from './PlaceIndent';
 import OrderAcceptance from './OrderAcceptance';
+import Invoice from './Invoice';
 
  
 
@@ -68,7 +70,9 @@ export default function Dashboard() {
           <Route path="/tallyinvoicereport" element={<TallyInvoiceReport />} />
           <Route path="/tallyreceiptreport" element={<TallyReceiptReport />} />
           <Route path="/loadingslip" element={<LoadingSlip />} />
+          <Route path="/deliveryslip" element={<DeliverySlip />} />
           <Route path="/placeindent" element={<PlaceIndent />} />
+          <Route path="/invoice" element={<Invoice />} />
          
           
 

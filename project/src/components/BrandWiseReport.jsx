@@ -73,15 +73,10 @@ const BrandWiseReport = () => {
               setProductReport(null);
             }
             
-            if (ordersData.length === 0) {
-              toast.info('No AM orders found for today');
-            }
           } else {
-            toast.error('Failed to fetch today\'s AM orders');
             setProductReport(null);
           }
         } catch (error) {
-          toast.error('Failed to fetch today\'s AM orders. Please try again.');
           console.error('Error fetching today\'s AM orders:', error);
           setProductReport(null);
         } finally {
@@ -165,15 +160,7 @@ const BrandWiseReport = () => {
         
         console.log('Orders set:', ordersData.length);
         
-        if (ordersData.length === 0) {
-          toast.info(`No ${orderType} orders found for the selected date range`);
-        } else if (response.data.summary.total_products === 0) {
-          toast.info(`Found ${ordersData.length} ${orderType} orders but no products from ${selectedBrand} brand`);
-        } else {
-          toast.success(`Found ${ordersData.length} ${orderType} orders with ${response.data.summary.total_products} products from ${selectedBrand} brand`);
-        }
       } else {
-        toast.error(response.message || 'Failed to fetch brand report');
         // Clear orders on error too
         setOrders([]);
         setSummary({
@@ -184,7 +171,6 @@ const BrandWiseReport = () => {
         setProductReport(null);
       }
     } catch (error) {
-      toast.error('Failed to fetch brand report. Please try again.');
       console.error('Error fetching brand report:', error);
       // Clear orders on error
       setOrders([]);
@@ -202,7 +188,6 @@ const BrandWiseReport = () => {
   // PDF Functions
   const handleDownloadPDF = () => {
     if (!productReport) {
-      toast.error('No report data available for PDF generation');
       return;
     }
     
@@ -216,16 +201,13 @@ const BrandWiseReport = () => {
     
     try {
       downloadBrandReportPDF(productReport, reportInfo);
-      toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
     }
   };
 
   const handleViewPDF = () => {
     if (!productReport) {
-      toast.error('No report data available for PDF generation');
       return;
     }
     
@@ -239,10 +221,8 @@ const BrandWiseReport = () => {
     
     try {
       viewBrandReportPDF(productReport, reportInfo);
-      toast.success('PDF opened in new tab');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
     }
   };
 
@@ -369,50 +349,50 @@ const BrandWiseReport = () => {
 
         return (
     <div className="order-management-container">
-      <div className="order-management-header">
+      <div className="loading-slip-header">
         <h1>Brand Wise Report</h1>
         <div className="filter-controls">
-          <div className="filter-group">
-            <label>From Date:</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            />
+          <div className="date-filters">
+            <div className="filter-group">
+              <label>From Date:</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+            <div className="filter-group">
+              <label>To Date:</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
+            <div className="filter-group">
+              <label>Order Type:</label>
+              <select
+                value={orderType}
+                onChange={(e) => setOrderType(e.target.value)}
+              >
+                <option value="AM">AM Orders</option>
+                <option value="Evening">Evening Orders (PM + Evening)</option>
+              </select>
+            </div>
           </div>
-          <div className="filter-group">
-            <label>To Date:</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            />
-          </div>
-          <div className="filter-group">
-            <label>Order Type:</label>
-            <select
-              value={orderType}
-              onChange={(e) => setOrderType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="AM">AM Orders</option>
-              <option value="Evening">Evening Orders (PM + Evening)</option>
-            </select>
-          </div>
-          <div className="filter-group">
-            <label>Brand:</label>
-            <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            >
-              <option value="">Select Brand</option>
-              {brands.map((brand, index) => (
-                <option key={index} value={brand}>{brand}</option>
-              ))}
-            </select>
+          <div className="route-filter-section">
+            <div className="filter-group">
+              <label>Brand:</label>
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+              >
+                <option value="">Select Brand</option>
+                {brands.map((brand, index) => (
+                  <option key={index} value={brand}>{brand}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>

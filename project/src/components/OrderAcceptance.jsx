@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { getOrdersWithDateRange, updateOrderStatus, getCustomerRoute } from '../services/api';
+import { getOrdersWithDateRange, updateOrderStatus, getCustomerRoute, getRoutes } from '../services/api';
+import { filterOrdersByRoutes } from '../utils/deliverySlipHelper';
 import './OrderManagement.css';
 
 const OrderAcceptance = () => {
@@ -12,46 +13,56 @@ const OrderAcceptance = () => {
   const [customerRoutes, setCustomerRoutes] = useState({});
   const [selectedOrders, setSelectedOrders] = useState(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [routes, setRoutes] = useState([]);
+  const [routesLoading, setRoutesLoading] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState('');
+  const [selectedRoutes, setSelectedRoutes] = useState([]);
+  const [orderTypeFilter, setOrderTypeFilter] = useState('All');
 
-  // Set default date range to today and auto-fetch orders
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setFromDate(today);
-    setToDate(today);
-    console.log('OrderAcceptance - Setting default dates:', { fromDate: today, toDate: today });
-    
-    // Auto-fetch today's orders after setting default dates
-    const autoFetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await getOrdersWithDateRange(today, today);
-        console.log('OrderAcceptance - API Response:', response);
-        
-        if (response.data) {
-          const ordersList = response.data || [];
-          console.log('OrderAcceptance - Orders List:', ordersList);
-          setOrders(ordersList);
-          
-          // Fetch customer routes for the new orders
-          await fetchCustomerRoutes(ordersList);
-          
-          if (ordersList.length === 0) {
-            toast.info('No orders found for today');
-          }
-        } else {
-          toast.error('Failed to fetch today\'s orders');
-        }
-      } catch (error) {
-        toast.error('Failed to fetch today\'s orders. Please try again.');
-        console.error('Error fetching today\'s orders:', error);
-      } finally {
-        setLoading(false);
+  // Fetch routes from routes_crud API
+  const fetchRoutes = useCallback(async () => {
+    try {
+      setRoutesLoading(true);
+      const routesData = await getRoutes();
+      
+      // Check if routesData is an array and has data
+      if (Array.isArray(routesData) && routesData.length > 0) {
+        setRoutes(routesData);
+        console.log('Routes loaded successfully:', routesData.length, 'routes');
+      } else {
+        setRoutes([]);
+        toast.error('No routes found', { duration: 2000 });
       }
-    };
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+      toast.error('Failed to fetch routes: ' + error.message, { duration: 2000 });
+      setRoutes([]);
+    } finally {
+      setRoutesLoading(false);
+    }
+  }, []);
 
-    // Call the auto-fetch function
-    autoFetchOrders();
-  }, []); // Only run once on mount
+  // Filter orders by selected route(s) and order type
+  const getFilteredOrders = useCallback(() => {
+    // Start with all orders
+    let filteredOrders = [...orders];
+    
+    // Apply route filtering only if a route is selected
+    if (selectedRoute || (selectedRoutes && selectedRoutes.length > 0)) {
+      const routesToFilter = selectedRoutes.length > 0 ? selectedRoutes : (selectedRoute ? [selectedRoute] : []);
+      filteredOrders = filterOrdersByRoutes(orders, routesToFilter, customerRoutes, routes);
+    }
+    
+    // Apply order type filter
+    if (orderTypeFilter === 'AM') {
+      filteredOrders = filteredOrders.filter(order => order.order_type === 'AM');
+    } else if (orderTypeFilter === 'PM + Evening') {
+      filteredOrders = filteredOrders.filter(order => order.order_type === 'PM' || order.order_type === 'Evening');
+    }
+    // If orderTypeFilter is 'All', no additional filtering is applied
+    
+    return filteredOrders;
+  }, [orders, selectedRoute, selectedRoutes, customerRoutes, routes, orderTypeFilter]);
 
   // Fetch customer routes for all orders
   const fetchCustomerRoutes = async (ordersList) => {
@@ -72,7 +83,7 @@ const OrderAcceptance = () => {
     setCustomerRoutes(prev => ({ ...prev, ...routes }));
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!fromDate && !toDate) {
       toast.error('Please select at least one date');
       return;
@@ -81,21 +92,16 @@ const OrderAcceptance = () => {
     try {
       setLoading(true);
       const response = await getOrdersWithDateRange(fromDate, toDate);
-      console.log('OrderAcceptance - Manual fetch response:', response);
       
       if (response.data) {
         const ordersList = response.data || [];
-        console.log('OrderAcceptance - Manual fetch orders:', ordersList);
         setOrders(ordersList);
         
         // Fetch customer routes for the new orders
         await fetchCustomerRoutes(ordersList);
         
-        if (ordersList.length === 0) {
-          toast.info('No orders found for the selected date range');
-        }
       } else {
-        toast.error('Failed to fetch orders');
+        toast.error('No orders found for the selected date range');
       }
     } catch (error) {
       toast.error('Failed to fetch orders. Please try again.');
@@ -103,7 +109,24 @@ const OrderAcceptance = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fromDate, toDate]);
+
+  // Set default date range to today and auto-fetch orders when dates change
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setFromDate(today);
+    setToDate(today);
+    
+    // Only fetch routes, not orders
+    fetchRoutes();
+  }, [fetchRoutes]);
+
+  // Auto-fetch orders when date range changes
+  useEffect(() => {
+    if (fromDate && toDate) {
+      fetchOrders();
+    }
+  }, [fromDate, toDate, fetchOrders]);
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
@@ -145,7 +168,8 @@ const OrderAcceptance = () => {
   };
 
   const handleSelectAll = () => {
-    const eligibleOrders = orders.filter(order => 
+    const filteredOrders = getFilteredOrders();
+    const eligibleOrders = filteredOrders.filter(order => 
       order.approve_status !== 'Accepted' && 
       order.approve_status !== 'Rejected' && 
       order.cancelled !== 'Yes'
@@ -251,34 +275,68 @@ const OrderAcceptance = () => {
 
   return (
     <div className="order-management-container">
-      <div className="order-management-header">
+      <div className="loading-slip-header">
         <h1>Order Acceptance Management</h1>
         <div className="filter-controls">
-          <div className="filter-group">
-            <label>From Date:</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            />
+          <div className="date-filters">
+            <div className="filter-group">
+              <label>From Date:</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+            <div className="filter-group">
+              <label>To Date:</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
+            <div className="filter-group">
+              <label>Order Type:</label>
+              <select
+                value={orderTypeFilter}
+                onChange={(e) => setOrderTypeFilter(e.target.value)}
+              >
+                <option value="All">All</option>
+                <option value="AM">AM</option>
+                <option value="PM + Evening">PM + Evening</option>
+              </select>
+            </div>
           </div>
-          <div className="filter-group">
-            <label>To Date:</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2"
-            />
+          <div className="route-filter-section">
+            <div className="filter-group">
+              <label>Route Filter:</label>
+              <select
+                value={selectedRoute}
+                onChange={(e) => {
+                  setSelectedRoute(e.target.value);
+                  if (e.target.value) {
+                    setSelectedRoutes([e.target.value]);
+                  } else {
+                    setSelectedRoutes([]);
+                  }
+                }}
+                disabled={routesLoading}
+              >
+                <option value="">All Routes</option>
+                {routesLoading ? (
+                  <option value="" disabled>Loading routes...</option>
+                ) : routes.length === 0 ? (
+                  <option value="" disabled>No routes available</option>
+                ) : (
+                  routes.map((route) => (
+                    <option key={route.id} value={route.name}>
+                      {route.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
-          <button
-            onClick={fetchOrders}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-md transition-colors"
-          >
-            {loading ? 'Fetching...' : 'Refresh Orders'}
-          </button>
         </div>
       </div>
 
@@ -294,11 +352,11 @@ const OrderAcceptance = () => {
                 onClick={handleSelectAll}
                 className="text-sm text-blue-600 hover:text-blue-800 underline"
               >
-                {selectedOrders.size === orders.filter(order => 
+                {selectedOrders.size === getFilteredOrders().filter(order => 
                   order.approve_status !== 'Accepted' && 
                   order.approve_status !== 'Rejected' && 
                   order.cancelled !== 'Yes'
-                ).length ? 'Deselect All' : 'Select All Eligible'}
+                ).length && selectedOrders.size > 0 ? 'Deselect All' : 'Select All Eligible'}
               </button>
             </div>
             <div className="flex space-x-3">
@@ -332,7 +390,7 @@ const OrderAcceptance = () => {
                   <th>
                     <input
                       type="checkbox"
-                      checked={selectedOrders.size === orders.filter(order => 
+                      checked={selectedOrders.size === getFilteredOrders().filter(order => 
                         order.approve_status !== 'Accepted' && 
                         order.approve_status !== 'Rejected' && 
                         order.cancelled !== 'Yes'
@@ -354,7 +412,7 @@ const OrderAcceptance = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {getFilteredOrders().map((order) => (
                   <tr key={order.id} className="order-row">
                     <td>
                       <input
@@ -438,7 +496,7 @@ const OrderAcceptance = () => {
             </table>
           ) : (
             <div className="no-orders">
-              {fromDate || toDate ? 'No orders found for the selected date range' : 'Today\'s orders are automatically loaded. Change dates above to view different ranges.'}
+              {orders.length === 0 ? 'No orders found for the selected date range.' : 'No orders match the selected filters. Try changing the filters above.'}
             </div>
           )}
         </div>

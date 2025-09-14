@@ -19,6 +19,7 @@ const OrderManagement = () => {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [availableProducts, setAvailableProducts] = useState([]);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const navigate = useNavigate();
 
   const fetchOrders = useCallback(async () => {
@@ -178,11 +179,25 @@ const OrderManagement = () => {
   const handleAddProduct = (orderId) => {
     setSelectedOrderId(orderId);
     setShowAddProductModal(true);
+    setProductSearchTerm(''); // Reset search term when opening modal
     // Filter out products that are already in the order
     const currentOrderProducts = orderProducts[orderId] || [];
     const currentProductIds = currentOrderProducts.map(p => p.product_id);
     const available = productsMaster.filter(p => !currentProductIds.includes(p.id || p.product_id || p._id));
     setAvailableProducts(available);
+  };
+
+  // Filter products based on search term
+  const getFilteredAvailableProducts = () => {
+    if (!productSearchTerm.trim()) {
+      return availableProducts;
+    }
+    
+    const searchLower = productSearchTerm.toLowerCase();
+    return availableProducts.filter(product => 
+      product.name.toLowerCase().includes(searchLower) ||
+      product.category.toLowerCase().includes(searchLower)
+    );
   };
 
   const getTierPricesForProduct = (productId) => {
@@ -371,25 +386,27 @@ const OrderManagement = () => {
   };
 
   return (
-    <div className="order-management-container">
-      <div className="order-management-header">
+    <div className="loading-slip-container">
+      <div className="loading-slip-header">
         <h1>Order Management</h1>
         <div className="filter-controls">
-          <div className="filter-group">
-            <label>From Date:</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>To Date:</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
+          <div className="date-filters">
+            <div className="filter-group">
+              <label>From Date:</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+            <div className="filter-group">
+              <label>To Date:</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -623,7 +640,7 @@ const OrderManagement = () => {
                                                 disabled={order.cancelled === 'Yes'}
                                                 title={order.cancelled === 'Yes' ? 'Cannot delete from cancelled order' : `Delete ${product.name}`}
                                               >
-                                                🗑️
+                                                ✕
                                               </button>
                                             </div>
                                           )}
@@ -665,6 +682,20 @@ const OrderManagement = () => {
           <div className="modal-content">
             <h3>Add Product to Order</h3>
             <div className="modal-body">
+              {/* Search Input */}
+              <div className="product-search-container">
+                <input
+                  type="text"
+                  placeholder="Search products by name or category..."
+                  value={productSearchTerm}
+                  onChange={(e) => setProductSearchTerm(e.target.value)}
+                  className="product-search-input"
+                />
+                <div className="search-results-count">
+                  {getFilteredAvailableProducts().length} product(s) found
+                </div>
+              </div>
+              
               <table className="modal-products-table">
                 <thead>
                   <tr>
@@ -676,20 +707,28 @@ const OrderManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {availableProducts.map((product) => (
-                    <AddProductRow 
-                      key={product.id || product.product_id || product._id}
-                      product={product}
-                      orderId={selectedOrderId}
-                      onClose={() => setShowAddProductModal(false)}
-                      onProductAdded={() => {
-                        setShowAddProductModal(false);
-                        fetchOrderProducts(selectedOrderId);
-                      }}
-                      onOrdersRefresh={fetchOrders}
-                      onDeleteItem={handleDeleteItem}
-                    />
-                  ))}
+                  {getFilteredAvailableProducts().length > 0 ? (
+                    getFilteredAvailableProducts().map((product) => (
+                      <AddProductRow 
+                        key={product.id || product.product_id || product._id}
+                        product={product}
+                        orderId={selectedOrderId}
+                        onClose={() => setShowAddProductModal(false)}
+                        onProductAdded={() => {
+                          setShowAddProductModal(false);
+                          fetchOrderProducts(selectedOrderId);
+                        }}
+                        onOrdersRefresh={fetchOrders}
+                        onDeleteItem={handleDeleteItem}
+                      />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="no-products-found">
+                        {productSearchTerm ? 'No products found matching your search.' : 'No products available.'}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
