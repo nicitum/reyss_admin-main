@@ -404,6 +404,49 @@ export const getAllRoutes = async () => {
   }
 };
 
+// Can Order API - Single customer update (wrapper for bulk API)
+export const updateCanOrder = async (customerId, canOrderValue) => {
+  try {
+    const customer_updates = [{
+      customer_id: customerId,
+      can_order_value: canOrderValue
+    }];
+    
+    const response = await api.post('/can_order', { customer_updates });
+    
+    // For single update, return simplified response
+    if (response.data.success && response.data.data.successful_updates.length > 0) {
+      return {
+        success: true,
+        message: `Customer ${customerId} updated successfully`
+      };
+    } else if (response.data.data.failed_updates.length > 0) {
+      return {
+        success: false,
+        message: response.data.data.failed_updates[0].error
+      };
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error updating can_order status:', error);
+    throw error;
+  }
+};
+
+// Can Order API - Bulk update multiple customers
+export const updateCanOrderBulk = async (customerUpdates) => {
+  try {
+    const response = await api.post('/can_order', { customer_updates: customerUpdates });
+    return response.data;
+  } catch (error) {
+    console.error('Error bulk updating can_order status:', error);
+    throw error;
+  }
+};
+
+
+
 export const getBrandReport = async (fromDate, toDate, orderType, brand) => {
   try {
     const response = await api.get(`/brand_report`, {
@@ -551,5 +594,26 @@ export const postInvoiceToAPI = async (orderId, invoiceId, orderPlacedOn) => {
   } catch (error) {
     console.error("Error posting invoice to API:", error.response?.data || error.message);
     throw new Error("Failed to save invoice data to server.");
+  }
+};
+
+// Cut Off Timing API functions
+export const getCutOffTimings = async () => {
+  try {
+    const response = await api.get('/cut_off');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching cut off timings:", error);
+    throw error;
+  }
+};
+
+export const updateCutOffTiming = async (name, from_time, to_time) => {
+  try {
+    const response = await api.put(`/cut_off/${name}`, { from_time, to_time });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating cut off timing:", error);
+    throw error;
   }
 };

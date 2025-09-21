@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { getOrderProducts, updateOrderPrice, getProducts, getOrdersWithDateRange, updateOrder, deleteOrderProduct, cancelOrder } from '../services/api';
-import './OrderManagement.css';
+import { 
+  Search, Calendar, Package, ShoppingCart, IndianRupee, Edit3, Trash2, 
+  Save, X, ChevronDown, ChevronUp, Clock, Filter, User
+} from 'lucide-react';
+import { 
+  getOrderProducts, updateOrderPrice, getProducts, getOrdersWithDateRange, 
+  updateOrder, deleteOrderProduct, cancelOrder 
+} from '../services/api';
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
@@ -16,21 +21,26 @@ const OrderManagement = () => {
   const [editedPrices, setEditedPrices] = useState({});
   const [editedQuantities, setEditedQuantities] = useState({});
   const [productsMaster, setProductsMaster] = useState([]);
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [availableProducts, setAvailableProducts] = useState([]);
-  const [productSearchTerm, setProductSearchTerm] = useState('');
-  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // CORRECTED GST Calculation: API returns base price, not GST-inclusive price
+  const calculateFinalPrice = (basePrice, gstRate) => {
+    const base = parseFloat(basePrice) || 0;
+    return base + (base * (gstRate / 100));
+  };
+
+  const calculateGSTAmount = (basePrice, gstRate) => {
+    const base = parseFloat(basePrice) || 0;
+    return base * (gstRate / 100);
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getOrdersWithDateRange(fromDate, toDate);
-      const ordersData = response?.data || [];
-      setOrders(ordersData);
+      setOrders(response?.data || []);
     } catch (error) {
-      toast.error('Failed to fetch orders. Please try again.');
-      console.error('Error fetching orders:', error);
+      toast.error('Failed to fetch orders');
     } finally {
       setLoading(false);
     }
@@ -39,10 +49,9 @@ const OrderManagement = () => {
   const fetchProductsMaster = async () => {
     try {
       const data = await getProducts();
-      const list = Array.isArray(data?.data) ? data.data : data;
-      setProductsMaster(Array.isArray(list) ? list : []);
+      setProductsMaster(Array.isArray(data?.data) ? data.data : data);
     } catch (error) {
-      console.error('Error fetching products master:', error);
+      console.error('Error fetching products:', error);
     }
   };
 
@@ -53,7 +62,6 @@ const OrderManagement = () => {
       setOrderProducts(prev => ({ ...prev, [orderId]: products }));
     } catch (error) {
       toast.error(`Failed to fetch products for order ${orderId}`);
-      console.error('Error fetching order products:', error);
     } finally {
       setProductsLoading(prev => ({ ...prev, [orderId]: false }));
     }
@@ -76,220 +84,96 @@ const OrderManagement = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Auto-fetch today's orders when component gains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      // Only auto-fetch if dates are set to today
-      const today = new Date().toISOString().split('T')[0];
-      if (fromDate === today && toDate === today) {
-        fetchOrders();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchOrders, fromDate, toDate]);
-
   useEffect(() => {
     fetchProductsMaster();
   }, []);
 
   const statusColors = {
-    Pending: 'orange',
-    Accepted: 'green',
-    Rejected: 'red',
-    Shipped: 'blue',
-    Delivered: 'purple'
+    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+    Accepted: { bg: 'bg-green-100', text: 'text-green-800' },
+    Rejected: { bg: 'bg-red-100', text: 'text-red-800' },
+    Shipped: { bg: 'bg-blue-100', text: 'text-blue-800' },
+    Delivered: { bg: 'bg-purple-100', text: 'text-purple-800' }
   };
 
-  const handleEditPrice = (productId, price, gstRate) => {
+  const handleEditProduct = (productId, price, quantity) => {
     setEditingProductId(productId);
-    // The price parameter is already the final price (base + GST)
-    // So we need to calculate the base price by removing GST
-    const basePrice = price / (1 + (gstRate / 100));
-    setEditedPrices(prev => ({ ...prev, [productId]: basePrice.toFixed(2) }));
+    // Keep current price as default, user can change if needed
+    setEditedPrices(prev => ({ ...prev, [productId]: price.toFixed(2) }));
+    setEditedQuantities(prev => ({ ...prev, [productId]: quantity }));
   };
 
-  const handleEditQuantity = (productId, currentQuantity) => {
-    setEditingProductId(productId);
-    setEditedQuantities(prev => ({ ...prev, [productId]: currentQuantity }));
-  };
-
-  const handleQuantityChange = (e, productId) => {
-    setEditedQuantities(prev => ({ ...prev, [productId]: parseInt(e.target.value) || 0 }));
-  };
-
-  const updateOrderTotal = (orderId) => {
-    const currentProducts = orderProducts[orderId] || [];
-    let newTotal = 0;
-
-    // Calculate new total based on current products and any edited quantities
-    for (const product of currentProducts) {
-      const productId = product.product_id;
-      const editedQuantity = editedQuantities[productId];
-      const editedPrice = editedPrices[productId];
-
-      let finalPrice = product.price;
-      let finalQuantity = product.quantity;
-
-      // Use edited price if available
-      if (editedPrice !== undefined) {
-        const basePrice = parseFloat(editedPrice);
-        finalPrice = basePrice + (basePrice * (product.gst_rate / 100));
-      }
-
-      // Use edited quantity if available
-      if (editedQuantity !== undefined) {
-        finalQuantity = editedQuantity;
-      }
-
-      newTotal += finalPrice * finalQuantity;
-    }
-
-    // Update the orders list with the new total
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { ...order, total_amount: newTotal }
-        : order
-    ));
-  };
-
-  const handleCancelOrder = async (orderId, customerId) => {
-    if (!window.confirm(`Are you sure you want to cancel order #${orderId} for customer ${customerId}?`)) {
+  const handleSaveProductChanges = async (orderId, productId) => {
+    const currentEditedPrice = editedPrices[productId];
+    const currentEditedQuantity = editedQuantities[productId];
+    
+    // Get current product details
+    const productDetails = orderProducts[orderId]?.find(p => p.product_id === productId);
+    if (!productDetails) {
+      toast.error('Product details not found.');
       return;
     }
 
-    try {
-      const response = await cancelOrder(orderId);
-      
-      if (response.success) {
-        toast.success(`Order #${orderId} cancelled successfully!`);
-        
-        // Refresh the orders list to show updated status
-        await fetchOrders();
-      } else {
-        toast.error(response.message || 'Failed to cancel order');
-      }
-    } catch (error) {
-      toast.error('Failed to cancel order. Please try again.');
-      console.error('Error cancelling order:', error);
-    }
-  };
-
-  const handleAddProduct = (orderId) => {
-    setSelectedOrderId(orderId);
-    setShowAddProductModal(true);
-    setProductSearchTerm(''); // Reset search term when opening modal
-    // Filter out products that are already in the order
-    const currentOrderProducts = orderProducts[orderId] || [];
-    const currentProductIds = currentOrderProducts.map(p => p.product_id);
-    const available = productsMaster.filter(p => !currentProductIds.includes(p.id || p.product_id || p._id));
-    setAvailableProducts(available);
-  };
-
-  // Filter products based on search term
-  const getFilteredAvailableProducts = () => {
-    if (!productSearchTerm.trim()) {
-      return availableProducts;
-    }
+    // Use edited values or fall back to current values
+    const finalPrice = currentEditedPrice ? parseFloat(currentEditedPrice) : parseFloat(productDetails.price);
+    const finalQuantity = currentEditedQuantity !== undefined ? currentEditedQuantity : productDetails.quantity;
     
-    const searchLower = productSearchTerm.toLowerCase();
-    return availableProducts.filter(product => 
-      product.name.toLowerCase().includes(searchLower) ||
-      product.category.toLowerCase().includes(searchLower)
-    );
-  };
-
-  const getTierPricesForProduct = (productId) => {
-    const p = productsMaster.find(pm => pm.id === productId || pm.product_id === productId || pm._id === productId);
-    if (!p) return [];
-    const raw = [p.price_p1, p.price_p2, p.price_p3, p.price_p4, p.price_p5];
-    return raw
-      .map((v, idx) => ({ key: `P${idx+1}`, value: v }))
-      .filter(t => t.value !== undefined && t.value !== null && t.value !== '' && !Number.isNaN(Number(t.value)))
-      .map(t => ({ key: t.key, value: Number(t.value) }));
-  };
-
-  const handleSelectTierPrice = (productId, gstRate, tierPrice) => {
-    // tierPrice is the BASE PRICE, not the final price
-    // So we use it directly as the base price
-    setEditedPrices(prev => ({ ...prev, [productId]: Number(tierPrice).toFixed(2) }));
-  };
-
-  const handlePriceChange = (e, productId) => {
-    setEditedPrices(prev => ({ ...prev, [productId]: e.target.value }));
-  };
-
-  const handleSavePrice = async (orderId, productId) => {
-    const currentEditedPrice = editedPrices[productId];
-    if (!currentEditedPrice || isNaN(parseFloat(currentEditedPrice))) {
+    if (!finalPrice || isNaN(finalPrice) || finalPrice <= 0) {
       toast.error('Please enter a valid price.');
       return;
     }
 
-    try {
-      const productDetails = orderProducts[orderId]?.find(p => p.product_id === productId);
-
-      if (!productDetails?.gst_rate) {
-        toast.error('GST rate not found for this product.');
-        return;
-      }
-
-      const gstRate = productDetails.gst_rate;
-      const basePrice = parseFloat(currentEditedPrice);
-      // Final Price = Base Price + GST
-      const finalPrice = basePrice + (basePrice * (gstRate / 100));
-
-      const orderPriceResponse = await updateOrderPrice(orderId, productId, finalPrice);
-      if (orderPriceResponse && orderPriceResponse.status === 200) {
-        toast.success('Price updated successfully!');
-        
-        // Update the order total immediately
-        updateOrderTotal(orderId);
-        
-        // Refresh order products immediately
-        await fetchOrderProducts(orderId);
-        
-        // Refresh the orders list to show updated total amounts
-        await fetchOrders();
-        
-        setEditingProductId(null);
-        setEditedPrices(prev => {
-          const newState = { ...prev };
-          delete newState[productId];
-          return newState;
-        });
-      } else {
-        toast.error(`Failed to update price: ${orderPriceResponse?.data?.message || 'Something went wrong'}`);
-      }
-    } catch (error) {
-      toast.error('Failed to update price. Please try again.');
-      console.error('Error updating order price:', error);
-    }
-  };
-
-  const handleDeleteItem = async (orderId, productId, productName) => {
-    if (!window.confirm(`Are you sure you want to delete "${productName}" from this order?`)) {
+    if (!finalQuantity || finalQuantity < 0) {
+      toast.error('Please enter a valid quantity.');
       return;
     }
 
     try {
-      // Call the delete API
-      const response = await deleteOrderProduct(productId);
+      // Calculate final price with GST
+      const finalPriceWithGST = calculateFinalPrice(finalPrice, productDetails.gst_rate);
+
+      // Update the product price
+      const priceResponse = await updateOrderPrice(orderId, productId, finalPriceWithGST);
       
-      if (response.success) {
-        toast.success('Item deleted successfully!');
+      if (priceResponse?.status === 200 || priceResponse?.success) {
+        // If quantity was also changed, update the entire order
+        if (currentEditedQuantity !== undefined && currentEditedQuantity !== productDetails.quantity) {
+          const updatedProducts = orderProducts[orderId].map(product => {
+            if (product.product_id === productId) {
+              return {
+                ...product,
+                price: finalPriceWithGST,
+                quantity: finalQuantity
+              };
+            }
+            return product;
+          });
+
+          // Calculate new total amount
+          const totalAmount = updatedProducts.reduce((sum, product) => {
+            return sum + (parseFloat(product.price) * product.quantity);
+          }, 0);
+
+          // Update the entire order
+          const orderResponse = await updateOrder(orderId, updatedProducts, totalAmount);
+          
+          if (orderResponse?.success) {
+            toast.success('Product updated successfully!');
+          } else {
+            toast.error('Price updated but quantity update failed.');
+          }
+        } else {
+          toast.success('Price updated successfully!');
+        }
         
-        // Update the order total immediately
-        updateOrderTotal(orderId);
+        // Immediately refresh the data to show updated changes
+        await Promise.all([
+          fetchOrderProducts(orderId),
+          fetchOrders()
+        ]);
         
-        // Refresh the order products immediately
-        await fetchOrderProducts(orderId);
-        
-        // Refresh the orders list to show updated total amounts
-        await fetchOrders();
-        
-        // Clear any edited values for this product
+        // Reset editing state
+        setEditingProductId(null);
         setEditedPrices(prev => {
           const newState = { ...prev };
           delete newState[productId];
@@ -300,25 +184,57 @@ const OrderManagement = () => {
           delete newState[productId];
           return newState;
         });
-        
-        // Exit edit mode if this product was being edited
+      } else {
+        toast.error('Failed to update product');
+      }
+    } catch (error) {
+      toast.error('Failed to update product');
+      console.error('Error updating product:', error);
+    }
+  };
+
+  const handleDeleteItem = async (orderId, productId, productName) => {
+    if (!window.confirm(`Delete "${productName}"?`)) return;
+
+    try {
+      const response = await deleteOrderProduct(productId);
+      if (response.success) {
+        toast.success('Item deleted successfully!');
+        await fetchOrderProducts(orderId);
+        await fetchOrders();
         if (editingProductId === productId) {
           setEditingProductId(null);
         }
-      } else {
-        toast.error(response.message || 'Failed to delete item');
       }
     } catch (error) {
-      toast.error('Failed to delete item. Please try again.');
-      console.error('Error deleting item:', error);
+      toast.error('Failed to delete item');
     }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm(`Cancel order #${orderId}?`)) return;
+
+    try {
+      const response = await cancelOrder(orderId);
+      if (response.success) {
+        toast.success('Order cancelled successfully!');
+        await fetchOrders();
+      }
+    } catch (error) {
+      toast.error('Failed to cancel order');
+    }
+  };
+
+  // Remove separate quantity editing - now handled in handleEditProduct
+
+  const handleQuantityChange = (e, productId) => {
+    setEditedQuantities(prev => ({ ...prev, [productId]: parseInt(e.target.value) || 0 }));
   };
 
   const handleSaveOrderChanges = async (orderId) => {
     try {
       const currentProducts = orderProducts[orderId] || [];
       
-      // Check if there are any products left in the order
       if (currentProducts.length === 0) {
         toast.error('Please add at least one item to the order before saving.');
         return;
@@ -327,19 +243,17 @@ const OrderManagement = () => {
       const updatedProducts = [];
       let totalAmount = 0;
 
-      // Process only the products that are currently in the frontend state
       for (const product of currentProducts) {
         const productId = product.product_id;
         const editedPrice = editedPrices[productId];
         const editedQuantity = editedQuantities[productId];
 
-        let finalPrice = product.price;
+        let finalPrice = parseFloat(product.price) || 0;
         let finalQuantity = product.quantity;
 
         if (editedPrice !== undefined) {
           const basePrice = parseFloat(editedPrice);
-          // Final Price = Base Price + GST
-          finalPrice = basePrice + (basePrice * (product.gst_rate / 100));
+          finalPrice = calculateFinalPrice(basePrice, product.gst_rate);
         }
 
         if (editedQuantity !== undefined) {
@@ -360,19 +274,12 @@ const OrderManagement = () => {
         totalAmount += finalPrice * finalQuantity;
       }
 
-      // Call the order update API with only the current frontend items
       const response = await updateOrder(orderId, updatedProducts, totalAmount);
       
       if (response.success) {
         toast.success(`Order updated successfully! ${updatedProducts.length} items saved.`);
-        
-        // Refresh the order products immediately
         await fetchOrderProducts(orderId);
-        
-        // Refresh the orders list to show updated total amounts
         await fetchOrders();
-        
-        // Clear edited values
         setEditedPrices({});
         setEditedQuantities({});
         setEditingProductId(null);
@@ -385,444 +292,438 @@ const OrderManagement = () => {
     }
   };
 
+  const getTierPricesForProduct = (productId) => {
+    const p = productsMaster.find(pm => pm.id === productId || pm.product_id === productId);
+    if (!p) return [];
+    return [p.price_p1, p.price_p2, p.price_p3, p.price_p4, p.price_p5]
+      .map((v, idx) => ({ key: `P${idx+1}`, value: v }))
+      .filter(t => t.value && !isNaN(Number(t.value)))
+      .map(t => ({ key: t.key, value: Number(t.value) }));
+  };
+
+  const filteredOrders = orders.filter(order => {
+    if (!searchTerm) return true;
+    const query = searchTerm.toLowerCase();
+    return (
+      order.id.toString().includes(query) ||
+      order.customer_id.toLowerCase().includes(query) ||
+      order.approve_status.toLowerCase().includes(query)
+    );
+  });
+
   return (
-    <div className="loading-slip-container">
-      <div className="loading-slip-header">
-        <h1>Order Management</h1>
-        <div className="filter-controls">
-          <div className="date-filters">
-            <div className="filter-group">
-              <label>From Date:</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Professional Header */}
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Management System</h1>
+              <p className="text-gray-600 text-lg">Manage orders, update prices, and track inventory</p>
             </div>
-            <div className="filter-group">
-              <label>To Date:</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
+            <div className="bg-orange-100 rounded-2xl p-4">
+              <ShoppingCart className="h-8 w-8 text-orange-600" />
+            </div>
+          </div>
+
+          {/* Professional Filters */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6 text-white">
+            <div className="flex items-center mb-4">
+              <Filter className="h-5 w-5 mr-2" />
+              <h2 className="text-lg font-semibold">Filters & Search</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-orange-100 mb-2">From Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:ring-2 focus:ring-orange-300 text-gray-900"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-orange-100 mb-2">To Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:ring-2 focus:ring-orange-300 text-gray-900"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-orange-100 mb-2">Search Orders</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Order ID, Customer, Status..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:ring-2 focus:ring-orange-300 text-gray-900"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-end">
+                <button
+                  onClick={fetchOrders}
+                  disabled={loading}
+                  className="w-full bg-white text-orange-600 px-4 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Loading...' : 'Refresh Orders'}
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-orange-400">
+              <div className="text-sm text-orange-100">
+                Showing <span className="font-semibold text-white">{filteredOrders.length}</span> of&nbsp;
+                <span className="font-semibold text-white">{orders.length}</span> orders
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className="loading-spinner">Loading orders...</div>
-      ) : (
-        <div className="orders-table-container">
-          <table className="orders-table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Order Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length > 0 ? (
-                orders.map((order) => (
-                  <React.Fragment key={order.id}>
-                    <tr
+      {/* Orders Cards */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {loading ? (
+          <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">Loading orders...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredOrders.length > 0 ? (
+              filteredOrders.map((order) => {
+                const isExpanded = expandedOrderId === order.id;
+                const isCancelled = order.cancelled === 'Yes';
+                const statusStyle = statusColors[order.approve_status] || statusColors.Pending;
+
+                return (
+                  <div key={order.id} className="bg-white rounded-2xl shadow-xl border border-gray-200 hover:shadow-2xl transition-shadow">
+                    {/* Order Header */}
+                    <div 
+                      className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => toggleOrderExpansion(order.id)}
-                      className="order-row"
                     >
-                      <td>#{order.id}</td>
-                      <td>{order.customer_id}</td>
-                      <td>₹{order.total_amount?.toLocaleString()}</td>
-                      <td>
-                        <span
-                          className="status-badge"
-                          style={{
-                            backgroundColor: `${statusColors[order.approve_status]}20`,
-                            color: statusColors[order.approve_status]
-                          }}
-                        >
-                          {order.approve_status}
-                        </span>
-                      </td>
-                      <td>
-                        {new Date(order.placed_on * 1000).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => handleCancelOrder(order.id, order.customer_id)}
-                          className="btn-cancel-order"
-                          disabled={order.cancelled === 'Yes'}
-                          title={order.cancelled === 'Yes' ? 'Order already cancelled' : `Cancel order #${order.id}`}
-                        >
-                          {order.cancelled === 'Yes' ? 'Cancelled' : 'Cancel Order'}
-                        </button>
-                      </td>
-                    </tr>
-                    {expandedOrderId === order.id && (
-                      <tr className="product-details-row">
-                        <td colSpan="6">
-                          {productsLoading[order.id] ? (
-                            <div className="loading-products">Loading products...</div>
-                          ) : (
-                            <div className="products-container">
-                              <div className="products-header">
-                                <h4>Order Products {order.cancelled === 'Yes' && <span className="cancelled-badge">(CANCELLED)</span>}</h4>
-                                <div className="products-actions">
-                                  <button 
-                                    onClick={() => handleAddProduct(order.id)}
-                                    className="btn-add-product"
-                                    disabled={order.cancelled === 'Yes'}
-                                    title={order.cancelled === 'Yes' ? 'Cannot add products to cancelled order' : 'Add Product'}
-                                  >
-                                    Add Product
-                                  </button>
-                                  <button 
-                                    onClick={() => handleSaveOrderChanges(order.id)}
-                                    className="btn-save-changes"
-                                    disabled={order.cancelled === 'Yes' || !orderProducts[order.id] || orderProducts[order.id].length === 0}
-                                    title={order.cancelled === 'Yes' ? 'Cannot save changes to cancelled order' : (!orderProducts[order.id] || orderProducts[order.id].length === 0 ? "Add at least one item to save" : `Save ${orderProducts[order.id]?.length || 0} items`)}
-                                  >
-                                    Save All Changes {orderProducts[order.id]?.length > 0 && `(${orderProducts[order.id].length} items)`}
-                                  </button>
-                                </div>
-                              </div>
-                              {orderProducts[order.id]?.length > 0 ? (
-                                <table className="products-table-detail">
-                                  <thead>
-                                    <tr className="products-table-header-row">
-                                      <th className="product-col">Product</th>
-                                      <th className="category-col">Category</th>
-                                      <th className="quantity-col">Quantity</th>
-                                      <th className="price-col">Price</th>
-                                      <th className="gst-rate-col">GST Rate</th>
-                                      <th className="total-col">Total</th>
-                                      <th>Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {orderProducts[order.id].map((product) => (
-                                      <tr key={`${order.id}-${product.product_id}`} className="products-table-data-row">
-                                        <td className="product-col">{product.name}</td>
-                                        <td className="category-col">{product.category}</td>
-                                        <td className="quantity-col">
-                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
-                                            <div className="quantity-edit-container">
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                value={editedQuantities[product.product_id] !== undefined ? editedQuantities[product.product_id] : product.quantity}
-                                                onChange={(e) => handleQuantityChange(e, product.product_id)}
-                                                className="quantity-input"
-                                              />
-                                              <div className="quantity-edit-buttons">
-                                                <button 
-                                                  className="btn-save-quantity"
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-blue-100 rounded-full p-2">
+                              <ShoppingCart className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
+                              <p className="text-sm text-gray-500">
+                                {new Date(order.placed_on * 1000).toLocaleDateString('en-IN', {
+                                  day: '2-digit', month: 'short', year: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gray-100 rounded-full p-2">
+                              <User className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{order.customer_id}</p>
+                              <p className="text-sm text-gray-500">Customer</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-green-100 rounded-full p-2">
+                              <IndianRupee className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="text-xl font-bold text-gray-900">₹{order.total_amount?.toLocaleString()}</p>
+                              <p className="text-sm text-gray-500">Total Amount</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+                              <Clock className="w-4 h-4 mr-1" />
+                              {order.approve_status}
+                            </span>
+                            {isCancelled && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                CANCELLED
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancelOrder(order.id);
+                            }}
+                            disabled={isCancelled}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              isCancelled 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            }`}
+                          >
+                            {isCancelled ? 'Cancelled' : 'Cancel Order'}
+                          </button>
+
+                          <button className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                            {isExpanded ? (
+                              <ChevronUp className="h-5 w-5 text-gray-600" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5 text-gray-600" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Products */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 bg-gray-50">
+                        {productsLoading[order.id] ? (
+                          <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Loading products...</p>
+                          </div>
+                        ) : (
+                          <div className="p-6">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                              Order Products ({orderProducts[order.id]?.length || 0} items)
+                            </h4>
+
+
+
+                            {orderProducts[order.id]?.length > 0 ? (
+                              <div className="space-y-4">
+                                {orderProducts[order.id].map((product) => {
+                                  const isEditing = editingProductId === product.product_id;
+                                  // CORRECTED: API price IS base price
+                                  const basePrice = parseFloat(product.price) || 0;
+                                  const gstAmount = calculateGSTAmount(basePrice, product.gst_rate);
+                                  const finalPrice = calculateFinalPrice(basePrice, product.gst_rate);
+
+                                  return (
+                                    <div key={product.product_id} className="bg-white rounded-xl border p-6 hover:shadow-lg transition-shadow">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-start space-x-4">
+                                            <div className="bg-blue-100 rounded-lg p-3">
+                                              <Package className="h-6 w-6 text-blue-600" />
+                                            </div>
+                                            <div className="flex-1">
+                                              <h5 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h5>
+                                              <p className="text-sm text-gray-500 mb-4">{product.category}</p>
+                                              
+                                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                {/* Quantity */}
+                                                <div>
+                                                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                                                  {isEditing && !isCancelled ? (
+                                                    <div className="flex items-center space-x-2">
+                                                      <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={editedQuantities[product.product_id] !== undefined ? editedQuantities[product.product_id] : product.quantity}
+                                                        onChange={(e) => handleQuantityChange(e, product.product_id)}
+                                                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                      />
+                                                      <span className="text-gray-500">units</span>
+                                                    </div>
+                                                  ) : (
+                                                    <div 
+                                                      className={`inline-flex items-center px-3 py-2 rounded-lg text-lg font-semibold cursor-pointer transition-colors ${
+                                                        isCancelled ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                                      }`}
+                                                      onClick={() => !isCancelled && handleEditProduct(product.product_id, basePrice, product.quantity)}
+                                                      title={isCancelled ? 'Cannot edit cancelled order' : 'Click to edit product'}
+                                                    >
+                                                      {editedQuantities[product.product_id] !== undefined ? editedQuantities[product.product_id] : product.quantity} units
+                                                      {!isCancelled && <Edit3 className="h-4 w-4 ml-2" />}
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                {/* Price Details */}
+                                                <div>
+                                                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Details</label>
+                                                  {isEditing && !isCancelled ? (
+                                                    <div className="space-y-3">
+                                                      {/* Tier Prices */}
+                                                      <div className="flex flex-wrap gap-2">
+                                                        {getTierPricesForProduct(product.product_id).map(t => (
+                                                          <button
+                                                            key={t.key}
+                                                            className="px-3 py-1 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 transition-colors"
+                                                            onClick={() => setEditedPrices(prev => ({ ...prev, [product.product_id]: t.value.toFixed(2) }))}
+                                                          >
+                                                            {t.key}: ₹{t.value.toFixed(2)}
+                                                          </button>
+                                                        ))}
+                                                      </div>
+                                                      
+                                                      {/* Price Input */}
+                                                      <div>
+                                                        <input
+                                                          type="number"
+                                                          step="0.01"
+                                                          value={editedPrices[product.product_id] || ''}
+                                                          onChange={(e) => setEditedPrices(prev => ({ ...prev, [product.product_id]: e.target.value }))}
+                                                          placeholder="Base Price"
+                                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        />
+                                                        <div className="mt-2 text-sm text-gray-600">
+                                                          <div>GST ({product.gst_rate}%): ₹{calculateGSTAmount(editedPrices[product.product_id] || 0, product.gst_rate).toFixed(2)}</div>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="space-y-1 text-sm">
+                                                      <div>Base: ₹{basePrice.toFixed(2)}</div>
+                                                      <div>GST ({product.gst_rate}%): ₹{gstAmount.toFixed(2)}</div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Right Corner: Final Price and Actions */}
+                                        <div className="flex flex-col items-end space-y-4 ml-6">
+                                          {/* Total and Final Price - Prominent Right Corner */}
+                                          <div className="text-right">
+                                            <div className="text-sm font-medium text-gray-600 mb-1">Total</div>
+                                            <div className="text-2xl font-bold text-green-600 mb-3">
+                                              ₹{(
+                                                (isEditing && !isCancelled ? 
+                                                  calculateFinalPrice(editedPrices[product.product_id] || basePrice, product.gst_rate) : 
+                                                  finalPrice
+                                                ) * 
+                                                (isEditing && editedQuantities[product.product_id] !== undefined ? 
+                                                  editedQuantities[product.product_id] : 
+                                                  product.quantity
+                                                )
+                                              ).toLocaleString()}
+                                            </div>
+                                            <div className="text-sm font-medium text-gray-600 mb-1">Final Price</div>
+                                            <div className="text-xl font-normal text-gray-800">
+                                              {isEditing && !isCancelled ? (
+                                                <span>₹{calculateFinalPrice(editedPrices[product.product_id] || basePrice, product.gst_rate).toFixed(2)}</span>
+                                              ) : (
+                                                <span>₹{finalPrice.toFixed(2)}</span>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Actions */}
+                                          <div className="flex items-center space-x-2">
+                                            {isEditing && !isCancelled ? (
+                                              <>
+                                                <button
+                                                  onClick={() => handleSaveProductChanges(order.id, product.product_id)}
+                                                  className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                                >
+                                                  <Save className="h-4 w-4 mr-1" />
+                                                  Save
+                                                </button>
+                                                <button
                                                   onClick={() => {
                                                     setEditingProductId(null);
-                                                    // Update the order total immediately when quantity is saved
-                                                    updateOrderTotal(order.id);
+                                                    // Reset to original values
+                                                    setEditedPrices(prev => {
+                                                      const newState = { ...prev };
+                                                      delete newState[product.product_id];
+                                                      return newState;
+                                                    });
+                                                    setEditedQuantities(prev => {
+                                                      const newState = { ...prev };
+                                                      delete newState[product.product_id];
+                                                      return newState;
+                                                    });
                                                   }}
+                                                  className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                                                 >
-                                                  ✓
+                                                  <X className="h-4 w-4 mr-1" />
+                                                  Cancel
                                                 </button>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div 
-                                              className={`quantity-display ${order.cancelled === 'Yes' ? 'disabled' : ''}`}
-                                              onClick={() => order.cancelled !== 'Yes' && handleEditQuantity(product.product_id, product.quantity)}
-                                              title={order.cancelled === 'Yes' ? 'Cannot edit cancelled order' : "Click to edit quantity"}
-                                            >
-                                              {product.quantity}
-                                              {order.cancelled !== 'Yes' && <span className="edit-icon">✏️</span>}
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="price-col">
-                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
-                                            <div className="edit-price-container">
-                                              <div className="price-edit-compact">
-                                                {/* Horizontal tier selection */}
-                                                <div className="tier-selection-horizontal">
-                                                  <div className="tier-buttons-row">
-                                                    {getTierPricesForProduct(product.product_id).map(t => {
-                                                      const currentBase = parseFloat(editedPrices[product.product_id] || 0);
-                                                      const isActive = editedPrices[product.product_id] && Math.abs(Number(t.value) - currentBase) < 0.01;
-                                                      
-                                                      return (
-                                                        <button
-                                                          key={t.key}
-                                                          className={`tier-btn ${isActive ? 'active' : ''}`}
-                                                          onClick={() => handleSelectTierPrice(product.product_id, product.gst_rate, Number(t.value))}
-                                                          title={`${t.key}: Base ₹${t.value.toFixed(2)} (Final: ₹${(Number(t.value) + (Number(t.value) * (product.gst_rate / 100))).toFixed(2)})`}
-                                                        >
-                                                          <span className="tier-short">{t.key}</span>
-                                                          <span className="tier-amount">₹{t.value.toFixed(2)}</span>
-                                                        </button>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                </div>
-
-                                                {/* Compact price input and summary */}
-                                                <div className="price-input-compact">
-                                                  <div className="input-row">
-                                                    <label className="compact-label">Base:</label>
-                                                <input
-                                                  type="number"
-                                                      step="0.01"
-                                                      min="0"
-                                                  value={editedPrices[product.product_id] || ''}
-                                                  onChange={(e) => handlePriceChange(e, product.product_id)}
-                                                      className="compact-input"
-                                                      placeholder="0.00"
-                                                      readOnly={(() => {
-                                                        if (!editedPrices[product.product_id]) return true;
-                                                        const currentBase = parseFloat(editedPrices[product.product_id] || 0);
-                                                        const hasMatchingTier = getTierPricesForProduct(product.product_id).some(t => 
-                                                          Math.abs(Number(t.value) - currentBase) < 0.01
-                                                        );
-                                                        return hasMatchingTier;
-                                                      })()}
-                                                />
-                                              </div>
-                                                  
-                                                  <div className="price-preview">
-                                                    <span className="preview-item">GST: ₹{(parseFloat(editedPrices[product.product_id] || 0) * (product.gst_rate / 100)).toFixed(2)}</span>
-                                                    <span className="preview-total">Total: ₹{(parseFloat(editedPrices[product.product_id] || 0) + (parseFloat(editedPrices[product.product_id] || 0) * (product.gst_rate / 100))).toFixed(2)}</span>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div className="price-display">
-                                              <div>Base: ₹{((product.price / (1 + (product.gst_rate / 100)))).toFixed(2)}</div>
-                                              <div>GST ({product.gst_rate}%): ₹{(product.price - (product.price / (1 + (product.gst_rate / 100)))).toFixed(2)}</div>
-                                              <div>Total: ₹{product.price?.toFixed(2)}</div>
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="gst-rate-col">{product.gst_rate}%</td>
-                                        <td className="total-col">
-                                          ₹{(product.price * product.quantity).toLocaleString()}
-                                        </td>
-                                        <td>
-                                          {editingProductId === product.product_id && order.cancelled !== 'Yes' ? (
-                                            <div className="action-buttons">
-                                              <button onClick={() => handleSavePrice(order.id, product.product_id)} className="btn-save">
-                                              Save
-                                            </button>
-                                              <button onClick={() => setEditingProductId(null)} className="btn-cancel">
-                                                Cancel
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <div className="action-buttons">
-                                              <button 
-                                                onClick={() => order.cancelled !== 'Yes' && handleEditPrice(product.product_id, product.price, product.gst_rate)} 
-                                                className="btn-edit"
-                                                disabled={order.cancelled === 'Yes'}
-                                                title={order.cancelled === 'Yes' ? 'Cannot edit cancelled order' : `Edit ${product.name}`}
-                                              >
-                                              Edit
-                                            </button>
-                                              <button 
-                                                onClick={() => order.cancelled !== 'Yes' && handleDeleteItem(order.id, product.product_id, product.name)} 
-                                                className="btn-delete"
-                                                disabled={order.cancelled === 'Yes'}
-                                                title={order.cancelled === 'Yes' ? 'Cannot delete from cancelled order' : `Delete ${product.name}`}
-                                              >
-                                                ✕
-                                              </button>
-                                            </div>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              ) : (
-                                <div className="no-products">
-                                  <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
-                                    <p style={{ margin: '0 0 10px 0', fontSize: '16px' }}>No items in this order</p>
-                                    <p style={{ margin: '0', fontSize: '14px' }}>Click "Add Product" to add items to this order</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <button
+                                                  onClick={() => !isCancelled && handleEditProduct(product.product_id, basePrice, product.quantity)}
+                                                  disabled={isCancelled}
+                                                  className={`inline-flex items-center px-3 py-2 rounded-lg transition-colors ${
+                                                    isCancelled 
+                                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                  }`}
+                                                >
+                                                  <Edit3 className="h-4 w-4 mr-1" />
+                                                  Edit
+                                                </button>
+                                                <button
+                                                  onClick={() => !isCancelled && handleDeleteItem(order.id, product.product_id, product.name)}
+                                                  disabled={isCancelled}
+                                                  className={`inline-flex items-center px-3 py-2 rounded-lg transition-colors ${
+                                                    isCancelled 
+                                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                      : 'bg-red-600 text-white hover:bg-red-700'
+                                                  }`}
+                                                >
+                                                  <Trash2 className="h-4 w-4 mr-1" />
+                                                  Delete
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8">
+                                <Package className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                                <p className="text-gray-500">No items in this order</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </React.Fragment>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="no-orders">
-                    No orders found for the selected date range
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Add Product Modal */}
-      {showAddProductModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Add Product to Order</h3>
-            <div className="modal-body">
-              {/* Search Input */}
-              <div className="product-search-container">
-                <input
-                  type="text"
-                  placeholder="Search products by name or category..."
-                  value={productSearchTerm}
-                  onChange={(e) => setProductSearchTerm(e.target.value)}
-                  className="product-search-input"
-                />
-                <div className="search-results-count">
-                  {getFilteredAvailableProducts().length} product(s) found
-                </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                <Package className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No orders found</h3>
+                <p className="text-gray-500">
+                  {searchTerm ? 'Try adjusting your search criteria' : 'No orders found for the selected date range'}
+                </p>
               </div>
-              
-              <table className="modal-products-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getFilteredAvailableProducts().length > 0 ? (
-                    getFilteredAvailableProducts().map((product) => (
-                      <AddProductRow 
-                        key={product.id || product.product_id || product._id}
-                        product={product}
-                        orderId={selectedOrderId}
-                        onClose={() => setShowAddProductModal(false)}
-                        onProductAdded={() => {
-                          setShowAddProductModal(false);
-                          fetchOrderProducts(selectedOrderId);
-                        }}
-                        onOrdersRefresh={fetchOrders}
-                        onDeleteItem={handleDeleteItem}
-                      />
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="no-products-found">
-                        {productSearchTerm ? 'No products found matching your search.' : 'No products available.'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <button 
-              onClick={() => setShowAddProductModal(false)}
-              className="btn-close-modal"
-            >
-              Close
-            </button>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  );
-};
-
-// Add Product Row Component
-const AddProductRow = ({ product, orderId, onClose, onProductAdded, onOrdersRefresh, onDeleteItem }) => {
-  const [quantity, setQuantity] = useState(1);
-  const [adding, setAdding] = useState(false);
-
-  const handleAddToOrder = async () => {
-    if (quantity <= 0) {
-      toast.error('Please enter a valid quantity');
-      return;
-    }
-
-    try {
-      setAdding(true);
-      const productId = product.id || product.product_id || product._id;
-      const basePrice = product.price_p1 || product.price || 0;
-      const gstRate = product.gst_rate || 0;
-      // Final Price = Base Price + GST
-      const finalPrice = basePrice + (basePrice * (gstRate / 100));
-
-      const newProduct = {
-        order_id: orderId,
-        product_id: productId,
-        quantity: quantity,
-        price: finalPrice,
-        gst_rate: gstRate,
-        name: product.name,
-        category: product.category,
-        is_new: true
-      };
-
-      const response = await updateOrder(orderId, [newProduct], 0);
-      
-      if (response.success) {
-        toast.success('Product added successfully!');
-        onProductAdded();
-        // Refresh orders list to show updated total amounts
-        if (onOrdersRefresh) {
-          onOrdersRefresh();
-        }
-      } else {
-        toast.error(response.message || 'Failed to add product');
-      }
-    } catch (error) {
-      toast.error('Failed to add product. Please try again.');
-      console.error('Error adding product:', error);
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  return (
-    <tr>
-      <td>{product.name}</td>
-      <td>{product.category}</td>
-      <td>
-        ₹{((product.price_p1 || product.price || 0) + ((product.price_p1 || product.price || 0) * ((product.gst_rate || 0) / 100))).toFixed(2)}
-      </td>
-      <td>
-        <input
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-          className="modal-quantity-input"
-        />
-      </td>
-      <td>
-        <div className="action-buttons">
-          <button
-            onClick={handleAddToOrder}
-            disabled={adding}
-            className="btn-add-to-order"
-          >
-            {adding ? 'Adding...' : 'Add'}
-          </button>
-        </div>
-      </td>
-    </tr>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle, ChevronDown, ChevronRight, ArrowLeftRight, FileText } from "lucide-react";
+import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle, ChevronDown, ChevronRight, ArrowLeftRight, FileText, Settings } from "lucide-react";
 import LogoutButton from "./LogoutTab";
 
 const Sidebar = () => {
@@ -103,6 +103,18 @@ const Sidebar = () => {
                 <ArrowLeftRight className="mr-3" />
                 Route Swap
               </NavLink>
+              
+              <NavLink
+                to="/dashboard/cutofftiming"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                    isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <Settings className="mr-3" />
+                Cut Off Timing
+              </NavLink>
             </div>
           )}
         </div>
@@ -182,6 +194,18 @@ const Sidebar = () => {
             >
               <CheckCircle className="mr-3" />
               Order Acceptance
+            </NavLink>
+
+            <NavLink
+              to="/dashboard/ordercontrol"
+              className={({ isActive }) =>
+                `flex items-center px-6 py-3 hover:bg-gray-700 transition-colors rounded-lg ${
+                  isActive ? "bg-gray-700 text-white font-bold" : "text-gray-200"
+                }`
+              }
+            >
+              <Settings className="mr-3" />
+              Order Control
             </NavLink>
 
 

@@ -17,12 +17,11 @@ import TallyInvoiceReport from './TallyInvoiceReport';
 import TallyReceiptReport from './TallyReceiptReport';
 import LoadingSlip from './LoadingSlip';
 import DeliverySlip from './DeliverySlip';
-import PlaceIndent from './PlaceIndent';
+import PlaceOrderFlow from './PlaceIndent';
 import OrderAcceptance from './OrderAcceptance';
+import OrderControl from './OrderControl';
 import Invoice from './Invoice';
-
- 
-
+import CutOffTiming from './CutOffTiming';
 
 export default function Dashboard() {
   const [loggedInUser, setLoggedInUser] = useState(null);
@@ -67,12 +66,14 @@ export default function Dashboard() {
 
           <Route path="/updateorderprices" element={<UpdateOrderPrices />} />
           <Route path="/orderacceptance" element={<OrderAcceptance />} />
+          <Route path="/ordercontrol" element={<OrderControl />} />
           <Route path="/tallyinvoicereport" element={<TallyInvoiceReport />} />
           <Route path="/tallyreceiptreport" element={<TallyReceiptReport />} />
           <Route path="/loadingslip" element={<LoadingSlip />} />
           <Route path="/deliveryslip" element={<DeliverySlip />} />
-          <Route path="/placeindent" element={<PlaceIndent />} />
+          <Route path="/placeindent" element={<PlaceOrderFlow />} />
           <Route path="/invoice" element={<Invoice />} />
+          <Route path="/cutofftiming" element={<CutOffTiming />} />
          
           
 
