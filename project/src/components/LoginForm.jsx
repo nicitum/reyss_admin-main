@@ -47,7 +47,7 @@ export default function LoginForm() {
       localStorage.setItem("role", decodedToken.role);
 
       toast.success("Login successful!");
-      navigate("/dashboard");
+      navigate("/dashboard/ordersummary");
     } catch (error) {
       console.error("Login failed:", error);
       toast.error("Invalid credentials");

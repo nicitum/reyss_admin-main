@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import CustomerSelection from "./CustomerSelection";
 import ProductCatalogue from "./ProductCatalogue";
-import toast from "react-hot-toast";
 
 export default function PlaceOrderFlow() {
   const [currentStep, setCurrentStep] = useState("customer"); // "customer" or "products"
@@ -10,11 +9,12 @@ export default function PlaceOrderFlow() {
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
     setCurrentStep("products");
-    toast.success(`Selected customer: ${customer.name}`);
   };
 
   const handleBackToCustomerSelection = () => {
     setCurrentStep("customer");
+    // Reset customer selection
+    setSelectedCustomer(null);
   };
 
   const handleOrderPlaced = () => {

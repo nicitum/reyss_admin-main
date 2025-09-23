@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
+import { initializeFontSize } from './utils/fontUtils';
 
 
 const PrivateRoute = ({ children }) => {
@@ -11,6 +12,10 @@ const PrivateRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    initializeFontSize();
+  }, []);
+
   return (
     <Router>
       <Toaster position="top-right" />

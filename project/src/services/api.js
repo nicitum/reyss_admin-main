@@ -34,10 +34,17 @@ export const getOrders = async (date) => {
 };
 
 export const getUsers = async (search) => {
-  const response = await api.get(
-    `/allUsers${search ? `?search=${search}` : ""}`
-  );
-  return response.data.data;
+  try {
+    console.log('API Call - getUsers:', { search });
+    const response = await api.get(
+      `/allUsers${search ? `?search=${search}` : ""}`
+    );
+    console.log('API Response:', response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error;
+  }
 };
 
 export const addUser = async (userDetails) => {
@@ -211,6 +218,7 @@ export const getAdminOrders = async (adminId, date = null) => {
 
 export const getOrderProducts = async (orderId) => {
   try {
+    console.log('API Call - getOrderProducts:', { orderId });
     const response = await fetch(`http://82.112.226.135:8090/order-products?orderId=${orderId}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -218,11 +226,14 @@ export const getOrderProducts = async (orderId) => {
       }
     });
     
+    console.log('API Response Status:', response.status);
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const data = await response.json();
+    console.log('API Response Data:', data);
     return data;
   } catch (error) {
     console.error("Error fetching order products:", error);
@@ -243,6 +254,22 @@ export const fetchMostRecentOrderApi = async (customerId, orderType) => {
   } catch (error) {
     console.error("Error fetching most recent order:", error);
     throw new Error("Failed to fetch most recent order");
+  }
+};
+
+// API to fetch the most recent order for a specific customer and order type
+export const getMostRecentOrder = async (customerId, orderType) => {
+  try {
+    const response = await api.get(`/most-recent-order`, {
+      params: {
+        customerId,
+        orderType
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching most recent order:", error);
+    throw error;
   }
 };
 
@@ -446,7 +473,6 @@ export const updateCanOrderBulk = async (customerUpdates) => {
 };
 
 
-
 export const getBrandReport = async (fromDate, toDate, orderType, brand) => {
   try {
     const response = await api.get(`/brand_report`, {
@@ -614,6 +640,63 @@ export const updateCutOffTiming = async (name, from_time, to_time) => {
     return response.data;
   } catch (error) {
     console.error("Error updating cut off timing:", error);
+    throw error;
+  }
+};
+
+// Customer Order History API function
+export const getCustomerOrders = async (customerId, fromDate = null, toDate = null) => {
+  try {
+    let url = `/get-orders/${customerId}`;
+    const params = {};
+    
+    console.log('API Call - getCustomerOrders:', { customerId, fromDate, toDate });
+    
+    if (fromDate) params.from_date = fromDate;
+    if (toDate) params.to_date = toDate;
+    
+    // Add query parameters if they exist
+    const queryString = new URLSearchParams(params).toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+    
+    console.log('API Request URL:', url);
+    
+    const response = await api.get(url);
+    console.log('API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching customer orders:", error);
+    throw error;
+  }
+};
+
+// Update auto order preferences for a customer (single update)
+export const updateAutoOrderPreferences = async (customerId, autoAmOrder, autoPmOrder, autoEveOrder) => {
+  try {
+    const response = await api.post('/update-auto-order-preferences', {
+      customer_id: customerId,
+      auto_am_order: autoAmOrder,
+      auto_pm_order: autoPmOrder,
+      auto_eve_order: autoEveOrder
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating auto order preferences:', error);
+    throw error;
+  }
+};
+
+// Update auto order preferences for multiple customers (bulk update)
+export const updateAutoOrderPreferencesBulk = async (bulkUpdates) => {
+  try {
+    const response = await api.post('/update-auto-order-preferences', {
+      bulk_updates: bulkUpdates
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error bulk updating auto order preferences:', error);
     throw error;
   }
 };
