@@ -2,41 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import * as XLSX from 'xlsx';
+import { 
+  Receipt, 
+  Download, 
+  Calendar, 
+  Filter,
+  AlertCircle,
+  Loader2,
+  CreditCard,
+  DollarSign
+} from 'lucide-react';
 import { getReceipts } from '../services/api';
-import './TallyReceiptPage.css';
 
-const TallyReceiptPage = () => {
+const TallyReceiptReport = () => {
   const [receipts, setReceipts] = useState([]);
   const [filteredReceipts, setFilteredReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(moment().format('YYYY-MM-DD'));
+  const [endDate, setEndDate] = useState(moment().format('YYYY-MM-DD'));
 
-  const fetchReceipts = async () => {
-    console.log("Fetching receipts...");
+  const fetchReceipts = async (start = startDate, end = endDate) => {
+    console.log("Fetching receipts with date range:", { start, end });
     try {
       setLoading(true);
       setError(null);
-      const data = await getReceipts();
+      const data = await getReceipts(start, end);
       console.log("Fetched receipts:", data);
       if (!data.length) {
-        setError("No receipts found");
-        toast.error("No receipts found");
+        setError("No receipts found for the selected date range");
         setFilteredReceipts([]);
         setReceipts([]);
         return;
       }
       setReceipts(data);
       setFilteredReceipts(data);
-
-      // Set date range from API response
-      const dates = data.map(r => moment(r.payment_date, 'YYYY-MM-DD'));
-      const minDate = moment.min(dates).format('YYYY-MM-DD');
-      const maxDate = moment.max(dates).format('YYYY-MM-DD');
-      setStartDate(minDate);
-      setEndDate(maxDate);
-      console.log("Set date range:", { minDate, maxDate });
+      console.log(`Successfully loaded ${data.length} receipts`);
     } catch (error) {
       const errorMessage = error.message || 'Failed to fetch receipts';
       console.error("Fetch error:", error);
@@ -47,6 +48,22 @@ const TallyReceiptPage = () => {
       console.log("Loading set to false");
     }
   };
+
+  // Fetch receipts when dates change (including initial load)
+  useEffect(() => {
+    // Validate date range if both dates are provided
+    if (startDate && endDate && moment(endDate).isBefore(moment(startDate))) {
+      toast.error('End date cannot be before start date');
+      setReceipts([]);
+      setFilteredReceipts([]);
+      setError('Invalid date range');
+      setLoading(false);
+      return;
+    }
+    
+    // Fetch receipts with current date range
+    fetchReceipts(startDate, endDate);
+  }, [startDate, endDate]);
 
   const formatDate = dateString => {
     if (!dateString) return '-';
@@ -156,79 +173,182 @@ const TallyReceiptPage = () => {
     toast.success('Report exported successfully');
   };
 
-  useEffect(() => {
-    console.log("useEffect: Fetching receipts");
-    fetchReceipts();
-  }, []);
+
 
   return (
-    <div className="tally-receipt-container">
-      <div className="tally-receipt-header">
-        <h1>Tally Receipt Report</h1>
-        <div className="date-filter-export">
-          <div className="date-filter">
-            <label>
-              Start Date:
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => {
-                  setStartDate(e.target.value);
-                  filterReceipts(e.target.value, endDate);
-                }}
-              />
-            </label>
-            <label>
-              End Date:
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => {
-                  setEndDate(e.target.value);
-                  filterReceipts(startDate, e.target.value);
-                }}
-              />
-            </label>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
+      {/* Professional Header */}
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Tally Receipt Report</h1>
+              <p className="text-gray-600">Export and manage receipt data for Tally integration</p>
+            </div>
+            <div className="bg-orange-100 rounded-2xl p-4">
+              <Receipt className="h-8 w-8 text-orange-600" />
+            </div>
           </div>
-          <button onClick={exportToExcel} className="export-button">
-            Export Report
-          </button>
+
+          {/* Professional Filters */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-4 text-white">
+            <div className="flex items-center mb-3">
+              <Filter className="h-5 w-5 mr-2" />
+              <h2 className="text-lg font-semibold">Date Range & Export</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-orange-100 mb-1">Start Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:ring-2 focus:ring-orange-300 text-gray-900"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-orange-100 mb-1">End Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white rounded-lg focus:ring-2 focus:ring-orange-300 text-gray-900"
+                  />
+                </div>
+              </div>
+              
+              <div className="md:col-span-2 flex items-end">
+                <button
+                  onClick={exportToExcel}
+                  disabled={!filteredReceipts.length || loading}
+                  className="w-full flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:cursor-not-allowed"
+                >
+                  <Download className="h-5 w-5 mr-2" />
+                  Export to Excel
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {loading && <div className="loading-spinner">Loading receipts...</div>}
-      {error && <div className="error-message">{error}</div>}
-      {!loading && !error && filteredReceipts.length === 0 && (
-        <div className="no-receipts">No receipts found</div>
-      )}
-      {!loading && !error && filteredReceipts.length > 0 && (
-        <div className="receipts-table-container">
-          <table className="receipts-table">
-            <thead>
-              <tr>
-                <th>Vch No</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Payment Method</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReceipts.map(receipt => (
-                <tr key={receipt.transaction_id}>
-                  <td>{receipt.transaction_id || '-'}</td>
-                  <td>{formatDate(receipt.payment_date)}</td>
-                  <td>{receipt.customer_name || '-'}</td>
-                  <td>{receipt.payment_method || '-'}</td>
-                  <td>₹{(receipt.payment_amount || 0).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Receipt Count Display */}
+        <div className="mb-6 bg-white rounded-xl shadow-md p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Receipt className="h-5 w-5 text-orange-500 mr-2" />
+              <p className="text-gray-600">
+                {loading ? (
+                  <span className="flex items-center">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading receipts...
+                  </span>
+                ) : (
+                  <>
+                    Showing <span className="font-semibold">{filteredReceipts.length}</span> of <span className="font-semibold">{receipts.length}</span> receipts
+                    {(startDate || endDate) && (
+                      <span className="text-sm text-gray-500 ml-2">
+                        ({startDate && endDate ? `${formatDate(startDate)} - ${formatDate(endDate)}` : 'filtered'})
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+            {!loading && filteredReceipts.length > 0 && (
+              <div className="flex items-center text-sm text-gray-500">
+                <DollarSign className="h-4 w-4 mr-1" />
+                Total: ₹{filteredReceipts.reduce((sum, receipt) => sum + (receipt.payment_amount || 0), 0).toLocaleString()}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Content Area */}
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500 mr-3" />
+              <span className="text-lg text-gray-600">Loading receipts...</span>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <div className="flex items-center justify-center text-red-600">
+              <AlertCircle className="h-8 w-8 mr-3" />
+              <span className="text-lg">{error}</span>
+            </div>
+          </div>
+        ) : filteredReceipts.length > 0 ? (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-orange-500 to-red-500 text-white">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Vch No</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Date</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Customer</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Payment Method</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredReceipts.map(receipt => (
+                    <tr key={receipt.transaction_id} className="hover:bg-orange-50 transition-colors duration-150">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {receipt.transaction_id || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {formatDate(receipt.payment_date)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {receipt.customer_name || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <CreditCard className="h-3 w-3 mr-1" />
+                          {receipt.payment_method || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-green-600 text-right">
+                        ₹{(receipt.payment_amount || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50">
+                  <tr>
+                    <td colSpan="4" className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                      Total Amount:
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                      ₹{filteredReceipts.reduce((sum, receipt) => sum + (receipt.payment_amount || 0), 0).toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <div className="text-center">
+              <Receipt className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No receipts found</h3>
+              <p className="text-gray-500">No receipts found for the selected date range</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default TallyReceiptPage;
+export default TallyReceiptReport;

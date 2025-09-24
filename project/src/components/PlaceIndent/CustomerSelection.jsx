@@ -11,9 +11,14 @@ import {
   Repeat,
   Sunrise,
   Sunset,
-  Moon
+  Moon,
+  CheckSquare,
+  Square,
+  Layers,
+  Clock
 } from "lucide-react";
-import { getUsers, getMostRecentOrder, getOrderProducts, placeOrder } from "../../services/api";
+import { getUsers, getMostRecentOrder, getOrderProducts, placeOrder, updateAmountDue } from "../../services/api";
+import { toast } from 'react-hot-toast'; // Added toast import
 
 export default function CustomerSelection({ onCustomerSelect, selectedCustomer }) {
   const [customers, setCustomers] = useState([]);
@@ -23,6 +28,8 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
   const [currentPage, setCurrentPage] = useState(1);
   const [showReorderMenu, setShowReorderMenu] = useState(null); // Track which customer's reorder menu is open
   const [reorderLoading, setReorderLoading] = useState({});
+  const [bulkSelectedCustomers, setBulkSelectedCustomers] = useState([]); // For bulk selection
+  const [showBulkReorderMenu, setShowBulkReorderMenu] = useState(false); // For bulk reorder menu
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -30,7 +37,8 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       try {
         setLoading(true);
         const data = await getUsers("");
-        const customerData = Array.isArray(data) ? data : [];
+        // Filter for users with role "user" only
+        const customerData = Array.isArray(data) ? data.filter(user => user.role === "user") : [];
         setCustomers(customerData);
       } catch (error) {
         console.error("Failed to load customers");
@@ -91,12 +99,219 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
     setCurrentPage(1);
   };
 
+  // Bulk selection functions
+  const toggleCustomerSelection = (customerId) => {
+    setBulkSelectedCustomers(prev => {
+      if (prev.includes(customerId)) {
+        return prev.filter(id => id !== customerId);
+      } else {
+        return [...prev, customerId];
+      }
+    });
+  };
+
+  const selectAllCustomers = () => {
+    const allCustomerIds = paginatedCustomers.map(c => c.customer_id);
+    setBulkSelectedCustomers(allCustomerIds);
+  };
+
+  const clearAllSelections = () => {
+    setBulkSelectedCustomers([]);
+  };
+
   const handleReorderClick = (customerId, e) => {
     e.stopPropagation(); // Prevent customer selection when clicking reorder
     setShowReorderMenu(showReorderMenu === customerId ? null : customerId);
   };
 
+  // Handle bulk reorder
+  const handleBulkReorder = async (orderType, action) => {
+    // Filter customers to only include those with auto order enabled for the selected order type
+    const autoOrderCustomers = bulkSelectedCustomers.filter(customerId => {
+      const customer = customers.find(c => c.customer_id === customerId);
+      return customer && hasAutoOrderEnabled(customer, orderType);
+    });
+    
+    // If no customers have auto order enabled, show a message
+    if (autoOrderCustomers.length === 0) {
+      toast.error(`No selected customers have auto ${orderType} order enabled. Please select customers with auto orders enabled.`);
+      return;
+    }
+    
+    // If some customers don't have auto order enabled, show a warning
+    if (autoOrderCustomers.length < bulkSelectedCustomers.length) {
+      const nonAutoOrderCount = bulkSelectedCustomers.length - autoOrderCustomers.length;
+      toast(`Processing ${autoOrderCustomers.length} customers with auto ${orderType} order enabled. Skipping ${nonAutoOrderCount} customers without auto orders.`, {
+        icon: 'ℹ️'
+      });
+    } else {
+      toast(`Processing ${autoOrderCustomers.length} customers with auto ${orderType} order enabled...`, {
+        icon: '🔄'
+      });
+    }
+
+    try {
+      setReorderLoading(prev => ({ ...prev, bulk: true }));
+      
+      const results = [];
+      let successCount = 0;
+      let errorCount = 0;
+      const customerIdsForUpdate = [];
+      const amountsForUpdate = [];
+
+      // Set a flag to indicate we're in a bulk operation
+      window.isBulkReorderOperation = true;
+
+      // Process each customer with auto order enabled
+      for (const customerId of autoOrderCustomers) {
+        try {
+          console.log(`Processing bulk reorder for customer ${customerId}`);
+          
+          // Fetch the most recent order for this customer and order type
+          const orderResponse = await getMostRecentOrder(customerId, orderType);
+          
+          if (!orderResponse.success) {
+            throw new Error(orderResponse.message || `Failed to fetch ${orderType} order`);
+          }
+          
+          if (!orderResponse.order) {
+            throw new Error(`No ${orderType} order found`);
+          }
+          
+          const orderId = orderResponse.order.id;
+          
+          // Fetch order products
+          const productsResponse = await getOrderProducts(orderId);
+          
+          if (action === 'confirm') {
+            // For bulk operations, we need to calculate the total amount before placing the order
+            let formattedProducts = [];
+            
+            // Handle different possible data structures
+            let productsToProcess = [];
+            if (Array.isArray(productsResponse)) {
+              // Direct array format
+              productsToProcess = productsResponse;
+            } else if (Array.isArray(productsResponse.data)) {
+              // Object with data array
+              productsToProcess = productsResponse.data;
+            } else if (typeof productsResponse.data === 'object') {
+              // Single object
+              productsToProcess = [productsResponse.data];
+            } else if (typeof productsResponse === 'object') {
+              // Direct object
+              productsToProcess = [productsResponse];
+            }
+            
+            formattedProducts = productsToProcess.map(product => ({
+              id: product.product_id || product.id || product.productId,
+              quantity: product.quantity || product.qty || 0,
+              price: product.price || 0
+            })).filter(product => product.id); // Filter out invalid products
+            
+            if (formattedProducts.length > 0) {
+              // Calculate total amount
+              const totalAmount = formattedProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+              
+              // Place order directly without calling handleConfirmReorder to avoid individual updates
+              const orderDate = new Date().toISOString().split('T')[0];
+              const response = await placeOrder(formattedProducts, orderType, orderDate, customerId);
+              
+              console.log('Order placement response for customer', customerId, ':', response);
+              
+              // Check if order was successful - more robust checking
+              let isOrderSuccessful = false;
+              
+              if (response) {
+                // Check various success indicators
+                if (response.success === true || response.status === 'success' || response.code === 200 || response.status === 200) {
+                  isOrderSuccessful = true;
+                } else if (response.message && !response.message.toLowerCase().includes('error') && !response.message.toLowerCase().includes('failed')) {
+                  // If there's a message that doesn't indicate an error, consider it a success
+                  isOrderSuccessful = true;
+                } else if (Object.keys(response).length > 0 && !response.error) {
+                  // If response has content and no explicit error, consider it a success
+                  isOrderSuccessful = true;
+                }
+              }
+              
+              if (isOrderSuccessful) {
+                successCount++;
+                // Only add to bulk update if order was successful
+                customerIdsForUpdate.push(customerId);
+                amountsForUpdate.push(totalAmount);
+              } else {
+                errorCount++;
+              }
+            } else {
+              errorCount++;
+            }
+          } else if (action === 'edit') {
+            // For bulk edit, we'll just show a message as this would require a different flow
+            toast.error("Bulk edit is not supported. Please use individual edit option.");
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Error processing reorder for customer ${customerId}:`, error);
+          errorCount++;
+        }
+      }
+      
+      // Clear the bulk operation flag
+      window.isBulkReorderOperation = false;
+      
+      // Update amount due for all successful customers in bulk
+      if (customerIdsForUpdate.length > 0) {
+        try {
+          console.log('Updating amount due for customers:', customerIdsForUpdate, 'with amounts:', amountsForUpdate);
+          const updateResponse = await updateAmountDue(customerIdsForUpdate, amountsForUpdate, 'add');
+          console.log('Amount due update response:', updateResponse);
+          
+          if (updateResponse && updateResponse.successCount > 0) {
+            toast.success(`Successfully updated amount due for ${updateResponse.successCount} customers`);
+          } else if (updateResponse && updateResponse.errorCount > 0) {
+            toast.error(`Failed to update amount due for ${updateResponse.errorCount} customers`);
+          }
+        } catch (updateError) {
+          console.error("Failed to bulk update amount due:", updateError);
+          toast.error(`Failed to update amount due: ${updateError.message}`);
+        }
+      }
+      
+      // Show summary toast
+      if (successCount > 0) {
+        toast.success(`Successfully placed ${successCount} auto ${orderType} orders`);
+      }
+      
+      if (errorCount > 0) {
+        toast.error(`Failed to place ${errorCount} auto ${orderType} orders`);
+      }
+      
+      // Clear selections after bulk operation
+      setBulkSelectedCustomers([]);
+      setShowBulkReorderMenu(false);
+    } catch (error) {
+      // Clear the bulk operation flag in case of error
+      window.isBulkReorderOperation = false;
+      console.error("Error in bulk reorder operation:", error);
+      toast.error(`Error in bulk reorder: ${error.message}`);
+    } finally {
+      setReorderLoading(prev => ({ ...prev, bulk: false }));
+    }
+  };
+
   const handleOrderTypeSelect = async (customerId, orderType, action) => {
+    // Find the customer
+    const customer = customers.find(c => c.customer_id === customerId);
+    
+    // Check if auto order is enabled for this order type when action is 'edit'
+    if (action === 'edit' && customer && !hasAutoOrderEnabled(customer, orderType)) {
+      toast.error(`Auto ${orderType} order is disabled for this customer. Cannot proceed with edit and reorder.`);
+      setShowReorderMenu(null);
+      return;
+    }
+    
+    // Fetch the most recent order for this customer and order type
     try {
       setReorderLoading(prev => ({ ...prev, [customerId]: true }));
       
@@ -108,11 +323,17 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       
       if (!orderResponse.success) {
         console.error(`Failed to fetch ${orderType} order:`, orderResponse.message);
+        toast.error(`Failed to fetch ${orderType} order: ${orderResponse.message}`);
+        setReorderLoading(prev => ({ ...prev, [customerId]: false }));
+        setShowReorderMenu(null);
         return;
       }
       
       if (!orderResponse.order) {
-        console.error(`No previous ${orderType} orders found for this customer`);
+        console.error(`No ${orderType} order found for this customer`);
+        toast.error(`No ${orderType} order found`);
+        setReorderLoading(prev => ({ ...prev, [customerId]: false }));
+        setShowReorderMenu(null);
         return;
       }
       
@@ -131,15 +352,24 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
         dataIsArray: productsResponse && productsResponse.data ? Array.isArray(productsResponse.data) : null
       });
       
-      if (action === 'confirm') {
+      // Handle action based on user selection, regardless of auto-order status
+      if (action === 'edit') {
+        // Navigate to product catalog with prefilled items for editing
+        handleEditReorder(customerId, orderType, productsResponse);
+      } else if (action === 'confirm') {
+        // For confirm action, check if customer has auto order enabled
+        if (customer && hasAutoOrderEnabled(customer, orderType)) {
+          // Show a toast indicating auto order is being processed
+          toast(`Processing auto ${orderType} order for ${customer.name}...`, {
+            icon: '🔄'
+          });
+        }
         // Confirm and place order directly
         await handleConfirmReorder(customerId, orderType, productsResponse);
-      } else if (action === 'edit') {
-        // Navigate to product catalog with prefilled items
-        handleEditReorder(customerId, orderType, productsResponse);
       }
     } catch (error) {
       console.error(`Error processing ${orderType} reorder:`, error);
+      toast.error(`Error processing ${orderType} reorder: ${error.message}`);
     } finally {
       setReorderLoading(prev => ({ ...prev, [customerId]: false }));
       setShowReorderMenu(null);
@@ -152,6 +382,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       
       // Check if productsResponse has the expected structure
       if (!productsResponse) {
+        toast.error("No products found for reorder");
         return;
       }
       
@@ -185,6 +416,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       console.log('Formatted products:', formattedProducts);
       
       if (formattedProducts.length === 0) {
+        toast.error("No valid products found for reorder");
         return;
       }
       
@@ -192,23 +424,128 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       const orderDate = new Date().toISOString().split('T')[0];
       console.log('Placing order with:', { formattedProducts, orderType, orderDate, customerId });
       
+      // Calculate total amount from products
+      const totalAmount = formattedProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+      
       // Place the order
       const response = await placeOrder(formattedProducts, orderType, orderDate, customerId);
       console.log('Order placement response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', response ? Object.keys(response) : 'null');
       
-      if (response.success) {
+      // Update amount due after successful order placement
+      if (response && (response.success === true || response.status === 'success' || response.code === 200 || response.status === 200)) {
+        try {
+          await updateAmountDue(customerId, totalAmount, 'add');
+          console.log(`Successfully updated amount due for customer ${customerId}`);
+        } catch (updateError) {
+          console.error("Failed to update amount due:", updateError);
+          // Don't show error to user as the order was placed successfully
+        }
+      }
+      
+      // Robust response handling - assume success unless we can prove it's an error
+      let isSuccessful = true; // Default to success
+      let message = `${orderType} reorder placed successfully!`;
+      
+      try {
+        // Log the entire response for debugging
+        console.log('Full response structure:', JSON.stringify(response, null, 2));
+        
+        // If response is null or undefined, it's an error
+        if (!response) {
+          isSuccessful = false;
+          message = 'No response received from server';
+        }
+        // Check for explicit error indicators
+        else if (response.success === false || 
+                 response.status === 'error' || 
+                 response.error ||
+                 response.code > 400 ||
+                 (response.message && (response.message.toLowerCase().includes('error') || response.message.toLowerCase().includes('failed')))) {
+          isSuccessful = false;
+          message = response.message || response.error || response.statusText || 'Order placement failed';
+        }
+        // Check for explicit success indicators
+        else if (response.success === true || 
+                 response.status === 'success' || 
+                 response.code === 200 ||
+                 response.status === 200) {
+          isSuccessful = true;
+          message = response.message || `${orderType} reorder placed successfully!`;
+        }
+        // Check if response contains data with success/error indicators
+        else if (response.data) {
+          if (response.data.success === false || 
+              response.data.status === 'error' || 
+              response.data.error ||
+              (response.data.message && (response.data.message.toLowerCase().includes('error') || response.data.message.toLowerCase().includes('failed')))) {
+            isSuccessful = false;
+            message = response.data.message || response.data.error || 'Order placement failed';
+          } else if (response.data.success === true || 
+                     response.data.status === 'success') {
+            isSuccessful = true;
+            message = response.data.message || `${orderType} reorder placed successfully!`;
+          }
+        }
+        // If we got here and there's a message that looks like an error, treat it as an error
+        else if (response.message && (response.message.toLowerCase().includes('error') || response.message.toLowerCase().includes('failed'))) {
+          isSuccessful = false;
+          message = response.message;
+        }
+        // Default case: if we can't determine it's an error, assume success
+        else {
+          isSuccessful = true;
+          // Use the response message if it exists and doesn't look like an error, otherwise use default
+          if (response.message && !response.message.toLowerCase().includes('error') && !response.message.toLowerCase().includes('failed')) {
+            message = response.message;
+          } else {
+            message = `${orderType} reorder placed successfully!`;
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        // If we can't parse the response, assume it's a success with default message
+        isSuccessful = true;
+        message = `${orderType} reorder placed successfully!`;
+      }
+      
+      // Show appropriate toast based on success/failure
+      if (isSuccessful) {
         console.log(`${orderType} order placed successfully!`);
+        toast.success(message); // Green success toast
       } else {
-        console.error(`Failed to place ${orderType} order:`, response.message);
+        console.error(`Failed to place ${orderType} order:`, message);
+        toast.error(message); // Red error toast
       }
     } catch (error) {
       console.error(`Error placing ${orderType} order:`, error);
+      toast.error(`Error placing ${orderType} order: ${error.message}`); // Red error toast for exceptions
     }
   };
 
   const handleEditReorder = (customerId, orderType, productsResponse) => {
     try {
       console.log('Editing reorder with products response:', productsResponse);
+      
+      // Check if there are products to reorder
+      let hasProducts = false;
+      
+      // Handle different possible data structures
+      if (Array.isArray(productsResponse) && productsResponse.length > 0) {
+        hasProducts = true;
+      } else if (productsResponse && Array.isArray(productsResponse.data) && productsResponse.data.length > 0) {
+        hasProducts = true;
+      } else if (productsResponse && typeof productsResponse.data === 'object' && productsResponse.data !== null) {
+        hasProducts = true;
+      } else if (productsResponse && typeof productsResponse === 'object' && productsResponse !== null) {
+        hasProducts = true;
+      }
+      
+      if (!hasProducts) {
+        toast.error(`No products found in previous ${orderType} order. Cannot proceed to cart.`);
+        return;
+      }
       
       // Store the products in localStorage to be used in ProductCatalogue
       // The productsResponse is already an array, so we store it directly
@@ -231,6 +568,48 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
       }
     } catch (error) {
       console.error(`Error preparing edit reorder:`, error);
+      toast.error(`Error preparing edit reorder: ${error.message}`);
+    }
+  };
+
+  // Function to count how many selected customers have auto order enabled for each type
+  const countAutoOrderCustomers = (orderType) => {
+    return bulkSelectedCustomers.filter(customerId => {
+      const customer = customers.find(c => c.customer_id === customerId);
+      return customer && hasAutoOrderEnabled(customer, orderType);
+    }).length;
+  };
+
+  // Function to get auto order status with user-friendly display
+  const getCustomerAutoOrderStatus = (customer) => {
+    const statuses = [];
+    
+    if (customer.auto_am_order === 'Yes') {
+      statuses.push('AM');
+    }
+    if (customer.auto_pm_order === 'Yes') {
+      statuses.push('PM');
+    }
+    if (customer.auto_eve_order === 'Yes') {
+      statuses.push('Eve');
+    }
+    
+    return statuses;
+  };
+
+  // Function to check if customer has auto order enabled for a specific order type
+  const hasAutoOrderEnabled = (customer, orderType) => {
+    if (!customer || !orderType) return false;
+    
+    switch (orderType) {
+      case 'AM':
+        return customer.auto_am_order === 'Yes';
+      case 'PM':
+        return customer.auto_pm_order === 'Yes';
+      case 'Evening':
+        return customer.auto_eve_order === 'Yes';
+      default:
+        return false;
     }
   };
 
@@ -326,6 +705,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
                   </span>
                 )}
               </div>
+              
               {(searchTerm || routeFilter) && (
                 <button
                   onClick={clearFilters}
@@ -337,6 +717,111 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
             </div>
           </div>
         </div>
+
+        {/* Bulk Actions Section - Moved below filter section */}
+        {paginatedCustomers.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg mb-6 overflow-visible">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2">
+              <h2 className="text-white text-sm font-semibold">Bulk Actions</h2>
+            </div>
+            
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {bulkSelectedCustomers.length > 0 ? (
+                    <>
+                      <span className="text-sm text-gray-700">
+                        {bulkSelectedCustomers.length} customer{bulkSelectedCustomers.length !== 1 ? 's' : ''} selected
+                      </span>
+                      <button
+                        onClick={clearAllSelections}
+                        className="text-orange-600 hover:text-orange-800 text-sm font-medium transition-colors duration-200"
+                      >
+                        Clear Selection
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={selectAllCustomers}
+                      className="text-orange-600 hover:text-orange-800 text-sm font-medium transition-colors duration-200 flex items-center"
+                    >
+                      <Square className="h-4 w-4 mr-1" />
+                      Select All
+                    </button>
+                  )}
+                </div>
+                
+                {/* Bulk Reorder Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowBulkReorderMenu(!showBulkReorderMenu)}
+                    disabled={bulkSelectedCustomers.length === 0}
+                    className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                  >
+                    <Layers className="h-4 w-4" />
+                    <span>Bulk Process</span>
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Bulk Reorder Menu - Fixed visibility issue */}
+                  {showBulkReorderMenu && (
+                    <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            handleBulkReorder('AM', 'confirm');
+                            setShowBulkReorderMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700"
+                        >
+                          <Sunrise className="h-4 w-4 mr-2" />
+                          Confirm AM Orders
+                          {bulkSelectedCustomers.length > 0 && (
+                            <span className="ml-auto text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">
+                              {countAutoOrderCustomers('AM')} customers
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleBulkReorder('PM', 'confirm');
+                            setShowBulkReorderMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700"
+                        >
+                          <Sunset className="h-4 w-4 mr-2" />
+                          Confirm PM Orders
+                          {bulkSelectedCustomers.length > 0 && (
+                            <span className="ml-auto text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                              {countAutoOrderCustomers('PM')} customers
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleBulkReorder('Evening', 'confirm');
+                            setShowBulkReorderMenu(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700"
+                        >
+                          <Moon className="h-4 w-4 mr-2" />
+                          Confirm Evening Orders
+                          {bulkSelectedCustomers.length > 0 && (
+                            <span className="ml-auto text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                              {countAutoOrderCustomers('Evening')} customers
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Customer List */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -359,145 +844,223 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
               {/* Customer Cards */}
               <div className="p-4">
                 <div className="grid gap-3">
-                  {paginatedCustomers.map((customer) => (
-                    <div
-                      key={customer.id}
-                      className={`group relative bg-gray-50 hover:bg-orange-50 border rounded-lg p-4 transition-all duration-300 cursor-pointer ${
-                        selectedCustomer?.id === customer.id
-                          ? "border-orange-500 bg-orange-50 ring-1 ring-orange-200"
-                          : "border-gray-200 hover:border-orange-300"
-                      }`}
-                      onClick={() => handleCustomerSelect(customer)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-start space-x-3">
-                          {/* Avatar */}
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm ${
-                            selectedCustomer?.id === customer.id
-                              ? "bg-orange-500 text-white"
-                              : "bg-gray-200 text-gray-600 group-hover:bg-orange-100 group-hover:text-orange-600"
-                          } transition-colors duration-200`}>
-                            <User className="h-5 w-5" />
-                          </div>
-                          
-                          {/* Customer Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <h3 className="font-semibold text-gray-900 truncate text-sm">
-                                {customer.name}
-                              </h3>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                ID: {customer.customer_id}
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
-                              <div className="flex items-center">
-                                <User className="h-3 w-3 mr-1 text-gray-400" />
-                                <span className="truncate">{customer.username}</span>
-                              </div>
-                              
-                              {customer.phone && (
-                                <div className="flex items-center">
-                                  <Phone className="h-3 w-3 mr-1 text-gray-400" />
-                                  <span>{customer.phone}</span>
-                                </div>
-                              )}
-                              
-                              {customer.route && (
-                                <div className="flex items-center">
-                                  <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                                  <span className="truncate">{customer.route}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-2">
-                          {/* Reorder Button */}
-                          <div className="relative">
-                            <button 
-                              onClick={(e) => handleReorderClick(customer.customer_id, e)}
-                              className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
-                              disabled={reorderLoading[customer.customer_id]}
+                  {paginatedCustomers.map((customer) => {
+                    // Get auto order status for display
+                    const autoOrderStatus = getCustomerAutoOrderStatus(customer);
+                    
+                    return (
+                      <div
+                        key={customer.id}
+                        className={`group relative bg-gray-50 hover:bg-orange-50 border rounded-lg p-4 transition-all duration-300 cursor-pointer ${
+                          selectedCustomer?.id === customer.id
+                            ? "border-orange-500 bg-orange-50 ring-1 ring-orange-200"
+                            : "border-gray-200 hover:border-orange-300"
+                        }`}
+                        onClick={() => handleCustomerSelect(customer)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-start space-x-3">
+                            {/* Checkbox for bulk selection */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCustomerSelection(customer.customer_id);
+                              }}
+                              className="flex items-center justify-center w-5 h-5 rounded border border-gray-300 bg-white mt-1"
                             >
-                              {reorderLoading[customer.customer_id] ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                              ) : (
-                                <Repeat className="h-4 w-4" />
+                              {bulkSelectedCustomers.includes(customer.customer_id) && (
+                                <CheckSquare className="h-4 w-4 text-orange-500" />
                               )}
                             </button>
                             
-                            {/* Reorder Menu */}
-                            {showReorderMenu === customer.customer_id && (
-                              <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'AM', 'confirm')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Sunrise className="h-3 w-3 mr-1" />
-                                    Confirm AM Order
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'AM', 'edit')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Sunrise className="h-3 w-3 mr-1" />
-                                    Edit & Reorder AM
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'PM', 'confirm')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Sunset className="h-3 w-3 mr-1" />
-                                    Confirm PM Order
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'PM', 'edit')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Sunset className="h-3 w-3 mr-1" />
-                                    Edit & Reorder PM
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'Evening', 'confirm')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Moon className="h-3 w-3 mr-1" />
-                                    Confirm Evening Order
-                                  </button>
-                                  <button
-                                    onClick={() => handleOrderTypeSelect(customer.customer_id, 'Evening', 'edit')}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-700"
-                                  >
-                                    <Moon className="h-3 w-3 mr-1" />
-                                    Edit & Reorder Evening
-                                  </button>
+                            {/* Avatar */}
+                            <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm ${
+                              selectedCustomer?.id === customer.id
+                                ? "bg-orange-500 text-white"
+                                : "bg-gray-200 text-gray-600 group-hover:bg-orange-100 group-hover:text-orange-600"
+                            } transition-colors duration-200`}>
+                              <User className="h-5 w-5" />
+                            </div>
+                            
+                            {/* Customer Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <h3 className="font-semibold text-gray-900 truncate text-sm">
+                                  {customer.name}
+                                </h3>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  ID: {customer.customer_id}
+                                </span>
+                                {/* Auto Order Indicator Badge */}
+                                {getCustomerAutoOrderStatus(customer).length > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Auto
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div className="flex items-center">
+                                  <User className="h-3 w-3 mr-1 text-gray-400" />
+                                  <span className="truncate">{customer.username}</span>
+                                </div>
+                                
+                                {customer.phone && (
+                                  <div className="flex items-center">
+                                    <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                                    <span>{customer.phone}</span>
+                                  </div>
+                                )}
+                                
+                                {customer.route && (
+                                  <div className="flex items-center">
+                                    <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                                    <span className="truncate">{customer.route}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Auto Order Information */}
+                              <div className="mt-2 flex items-start">
+                                <Clock className="h-3 w-3 mr-1 text-orange-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex flex-wrap gap-1">
+                                  {autoOrderStatus && autoOrderStatus.length > 0 ? (
+                                    autoOrderStatus.map((status, index) => {
+                                      let IconComponent = Sunrise;
+                                      let bgColor = "bg-orange-100";
+                                      let textColor = "text-orange-800";
+                                      
+                                      if (status === 'PM') {
+                                        IconComponent = Sunset;
+                                        bgColor = "bg-blue-100";
+                                        textColor = "text-blue-800";
+                                      } else if (status === 'Eve') {
+                                        IconComponent = Moon;
+                                        bgColor = "bg-purple-100";
+                                        textColor = "text-purple-800";
+                                      }
+                                      
+                                      return (
+                                        <span 
+                                          key={index} 
+                                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}
+                                        >
+                                          <IconComponent className="h-3 w-3 mr-1" />
+                                          {status}
+                                        </span>
+                                      );
+                                    })
+                                  ) : (
+                                    <span className="text-xs text-gray-500 font-medium">
+                                      No Auto Orders
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            )}
+                              
+                              {/* Auto Order Indicator */}
+                              {autoOrderStatus && autoOrderStatus.length > 0 && (
+                                <div className="mt-1 flex items-center">
+                                  <div className="w-2 h-2 rounded-full bg-green-500 mr-1"></div>
+                                  <span className="text-xs text-green-600 font-medium">
+                                    Auto Order Enabled
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
-                          {selectedCustomer?.id === customer.id && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Selected
-                            </span>
-                          )}
-                          
-                          <button className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-                            selectedCustomer?.id === customer.id
-                              ? "bg-orange-500 text-white"
-                              : "bg-gray-200 text-gray-600 group-hover:bg-orange-500 group-hover:text-white"
-                          }`}>
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-2">
+                            {/* Reorder Button - Only Edit options now */}
+                            <div className="relative">
+                              <button 
+                                onClick={(e) => handleReorderClick(customer.customer_id, e)}
+                                className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
+                                disabled={reorderLoading[customer.customer_id]}
+                              >
+                                {reorderLoading[customer.customer_id] ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                ) : (
+                                  <Repeat className="h-4 w-4" />
+                                )}
+                              </button>
+                              
+                              {/* Reorder Menu - Only Edit options */}
+                              {showReorderMenu === customer.customer_id && (
+                                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                                  <div className="py-1">
+                                    <button
+                                      onClick={() => hasAutoOrderEnabled(customer, 'AM') ? handleOrderTypeSelect(customer.customer_id, 'AM', 'edit') : null}
+                                      disabled={!hasAutoOrderEnabled(customer, 'AM')}
+                                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                                        hasAutoOrderEnabled(customer, 'AM')
+                                          ? 'text-gray-700 hover:bg-orange-50 hover:text-orange-700 cursor-pointer'
+                                          : 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                      }`}
+                                      title={!hasAutoOrderEnabled(customer, 'AM') ? 'Auto AM order is disabled for this customer' : ''}
+                                    >
+                                      <Sunrise className="h-4 w-4 mr-2" />
+                                      Edit & Reorder AM
+                                      {!hasAutoOrderEnabled(customer, 'AM') && (
+                                        <span className="ml-auto text-xs text-gray-400">(Disabled)</span>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => hasAutoOrderEnabled(customer, 'PM') ? handleOrderTypeSelect(customer.customer_id, 'PM', 'edit') : null}
+                                      disabled={!hasAutoOrderEnabled(customer, 'PM')}
+                                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                                        hasAutoOrderEnabled(customer, 'PM')
+                                          ? 'text-gray-700 hover:bg-orange-50 hover:text-orange-700 cursor-pointer'
+                                          : 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                      }`}
+                                      title={!hasAutoOrderEnabled(customer, 'PM') ? 'Auto PM order is disabled for this customer' : ''}
+                                    >
+                                      <Sunset className="h-4 w-4 mr-2" />
+                                      Edit & Reorder PM
+                                      {!hasAutoOrderEnabled(customer, 'PM') && (
+                                        <span className="ml-auto text-xs text-gray-400">(Disabled)</span>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => hasAutoOrderEnabled(customer, 'Evening') ? handleOrderTypeSelect(customer.customer_id, 'Evening', 'edit') : null}
+                                      disabled={!hasAutoOrderEnabled(customer, 'Evening')}
+                                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                                        hasAutoOrderEnabled(customer, 'Evening')
+                                          ? 'text-gray-700 hover:bg-orange-50 hover:text-orange-700 cursor-pointer'
+                                          : 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                      }`}
+                                      title={!hasAutoOrderEnabled(customer, 'Evening') ? 'Auto Evening order is disabled for this customer' : ''}
+                                    >
+                                      <Moon className="h-4 w-4 mr-2" />
+                                      Edit & Reorder Evening
+                                      {!hasAutoOrderEnabled(customer, 'Evening') && (
+                                        <span className="ml-auto text-xs text-gray-400">(Disabled)</span>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {selectedCustomer?.id === customer.id && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Selected
+                              </span>
+                            )}
+                            
+                            <button className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+                              selectedCustomer?.id === customer.id
+                                ? "bg-orange-500 text-white"
+                                : "bg-gray-200 text-gray-600 group-hover:bg-orange-500 group-hover:text-white"
+                            }`}>
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               

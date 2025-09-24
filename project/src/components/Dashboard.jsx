@@ -23,6 +23,10 @@ import FontSettings from './FontSettings';
 import OrderHistoryPage from './OrderHistoryPage';
 import OrderSummaryPage from './OrderSummaryPage';
 import AutoOrderPage from './AutoOrderPage';
+import CreditLimit from './CreditLimit';
+import CollectCash from './CollectCash';
+import PaymentsReport from './PaymentsReport';
+import ItemsReport from './ItemsReport';
 
 export default function Dashboard() {
   const [loggedInUser, setLoggedInUser] = useState(null);
@@ -75,6 +79,10 @@ export default function Dashboard() {
               <Route path="/fontsettings" element={<FontSettings />} />
               <Route path="/orderhistory" element={<OrderHistoryPage />} />
               <Route path="/ordersummary" element={<OrderSummaryPage />} />
+              <Route path="/creditlimit" element={<CreditLimit />} />
+              <Route path="/collectcash" element={<CollectCash />} />
+              <Route path="/paymentsreport" element={<PaymentsReport />} />
+              <Route path="/itemsreport" element={<ItemsReport />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>

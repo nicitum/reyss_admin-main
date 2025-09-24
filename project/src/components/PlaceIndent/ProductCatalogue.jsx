@@ -17,7 +17,7 @@ import {
   CheckCircle,
   X
 } from "lucide-react";
-import { getProducts, placeOrder } from "../../services/api";
+import { getProducts, placeOrder, updateAmountDue } from "../../services/api";
 import { toast } from 'react-hot-toast';
 
 export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlaced }) {
@@ -72,24 +72,27 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
           const newQuantities = {};
           
           productsToProcess.forEach(product => {
-            // Handle both 'id' and 'product_id' fields
-            const productId = product.product_id || product.id || product.productId || product._id;
-            if (productId) {
-              // Set the quantity
-              newQuantities[productId] = product.quantity || product.qty || 0;
-              
-              // If this product isn't in the existing product list, add it
-              if (!existingProductIds.has(productId)) {
-                // Create a product object that matches the format of the main product list
-                additionalProducts.push({
-                  id: productId, // Always use 'id' field for consistency with main product list
-                  product_id: productId,
-                  name: product.name || `Product ${productId}`,
-                  category: product.category || 'Unknown',
-                  price: product.price || 0,
-                  discount_price: product.price || 0,
-                  // Add other properties as needed
-                });
+            // Filter for Milk and Curd categories only
+            if (product.category && (product.category === "Milk" || product.category === "Curd")) {
+              // Handle both 'id' and 'product_id' fields
+              const productId = product.product_id || product.id || product.productId || product._id;
+              if (productId) {
+                // Set the quantity
+                newQuantities[productId] = product.quantity || product.qty || 0;
+                
+                // If this product isn't in the existing product list, add it
+                if (!existingProductIds.has(productId)) {
+                  // Create a product object that matches the format of the main product list
+                  additionalProducts.push({
+                    id: productId, // Always use 'id' field for consistency with main product list
+                    product_id: productId,
+                    name: product.name || `Product ${productId}`,
+                    category: product.category || 'Unknown',
+                    price: product.price || 0,
+                    discount_price: product.price || 0,
+                    // Add other properties as needed
+                  });
+                }
               }
             }
           });
@@ -102,18 +105,19 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
           setQuantities(newQuantities);
           setOrderType(reorderType);
           
+          // Show success toast for reorder
+          toast.success("Reorder products loaded successfully!");
+          
           // Clear localStorage
           localStorage.removeItem('reorderProducts');
           localStorage.removeItem('reorderType');
-          
-          // Remove the toast notification
         } else {
           // No reorder products, just set the regular products
           setProducts(productData);
         }
       } catch (error) {
         console.error('Error in fetchProducts:', error);
-        // Remove the error toast
+        toast.error("Failed to load products");
         setProducts([]);
       } finally {
         setLoading(false);
@@ -158,24 +162,27 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
           const newQuantities = {};
           
           productsToProcess.forEach(product => {
-            // Handle both 'id' and 'product_id' fields
-            const productId = product.product_id || product.id || product.productId || product._id;
-            if (productId) {
-              // Set the quantity
-              newQuantities[productId] = product.quantity || product.qty || 0;
-              
-              // If this product isn't in the existing product list, add it
-              if (!existingProductIds.has(productId)) {
-                // Create a product object that matches the format of the main product list
-                additionalProducts.push({
-                  id: productId, // Always use 'id' field for consistency with main product list
-                  product_id: productId,
-                  name: product.name || `Product ${productId}`,
-                  category: product.category || 'Unknown',
-                  price: product.price || 0,
-                  discount_price: product.price || 0,
-                  // Add other properties as needed
-                });
+            // Filter for Milk and Curd categories only
+            if (product.category && (product.category === "Milk" || product.category === "Curd")) {
+              // Handle both 'id' and 'product_id' fields
+              const productId = product.product_id || product.id || product.productId || product._id;
+              if (productId) {
+                // Set the quantity
+                newQuantities[productId] = product.quantity || product.qty || 0;
+                
+                // If this product isn't in the existing product list, add it
+                if (!existingProductIds.has(productId)) {
+                  // Create a product object that matches the format of the main product list
+                  additionalProducts.push({
+                    id: productId, // Always use 'id' field for consistency with main product list
+                    product_id: productId,
+                    name: product.name || `Product ${productId}`,
+                    category: product.category || 'Unknown',
+                    price: product.price || 0,
+                    discount_price: product.price || 0,
+                    // Add other properties as needed
+                  });
+                }
               }
             }
           });
@@ -188,14 +195,15 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
           setQuantities(newQuantities);
           setOrderType(reorderType);
           
+          // Show success toast for reorder
+          toast.success("Reorder products loaded successfully!");
+          
           // Clear localStorage
           localStorage.removeItem('reorderProducts');
           localStorage.removeItem('reorderType');
-          
-          // Remove the toast notification
         } catch (error) {
           console.error('Error processing reorder products from storage change:', error);
-          // Remove the error toast as well
+          toast.error("Failed to load reorder products");
         }
       }
     };
@@ -317,6 +325,15 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
       const selectedCustomerId = selectedCustomer.customer_id;
 
       await placeOrder(payloadProducts, orderType, isoDate, selectedCustomerId);
+      
+      // Update amount due after successful order placement
+      try {
+        await updateAmountDue(selectedCustomerId, totalAmount);
+        console.log(`Successfully updated amount due for customer ${selectedCustomerId}`);
+      } catch (updateError) {
+        console.error("Failed to update amount due:", updateError);
+        // Don't show error to user as the order was placed successfully
+      }
       
       // Show success toast message
       toast.success("Order placed successfully!");

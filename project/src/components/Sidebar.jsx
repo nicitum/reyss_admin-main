@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle, ChevronDown, ChevronRight, ArrowLeftRight, FileText, Settings, Type, Clock } from "lucide-react";
+import { Package, Users, CreditCard, ShoppingBag, MapPin, BarChart, CheckCircle, ChevronDown, ChevronRight, ArrowLeftRight, FileText, Settings, Type, Clock, Wallet } from "lucide-react";
 import LogoutButton from "./LogoutTab";
 
 const Sidebar = () => {
@@ -116,6 +116,31 @@ const Sidebar = () => {
                 <Settings className="mr-3" />
                 Cut Off Timing
               </NavLink>
+              
+              <NavLink
+                to="/dashboard/creditlimit"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
+                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <CreditCard className="mr-3" />
+                Credit Limit
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/collectcash"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
+                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  }`
+                }
+              >
+                <Wallet className="mr-3" />
+                Collect Cash
+              </NavLink>
+
             </div>
           )}
         </div>
@@ -325,6 +350,31 @@ const Sidebar = () => {
                     <FileText className="mr-3" />
                     Invoice
                   </NavLink>
+                  
+                  <NavLink
+                    to="/dashboard/paymentsreport"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
+                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <CreditCard className="mr-3" />
+                    Payments Report
+                  </NavLink>
+
+                  <NavLink
+                    to="/dashboard/itemsreport"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
+                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <BarChart className="mr-3" />
+                    Items Report
+                  </NavLink>
+
                 </div>
               )}
             </div>

@@ -104,8 +104,8 @@ const DeliverySlip = () => {
       if (order.customer_id && !customerRoutes[order.customer_id]) {
         try {
           const response = await getCustomerRoute(order.customer_id);
-          if (response.message === "Route fetched successfully") {
-            routes[order.customer_id] = response.route;
+          if (response.message === "User routes fetched successfully" && response.customers && response.customers.length > 0) {
+            routes[order.customer_id] = response.customers[0].route;
           } else {
             routes[order.customer_id] = 'N/A';
           }
@@ -456,7 +456,7 @@ const DeliverySlip = () => {
                               <tr>
                                 <th>Items</th>
                                 {slip.data.customerNames && slip.data.customerNames.map((name, idx) => (
-                                  <th key={idx} className="vertical-header">{name}</th>
+                                  <th key={idx} className="horizontal-header">{name}</th>
                                 ))}
                                 <th>Total Crates</th>
                               </tr>

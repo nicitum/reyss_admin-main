@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { fetchCustomerNames, fetchDeliverySequence } from '../services/api';
 
 /**
  * Helper functions for Delivery Slip operations
@@ -74,8 +75,58 @@ export const createDeliverySlipDataForRoute = async (ordersForRoute, routeName =
     }
   }
 
+  // Get customer IDs from the order map
+  const customerIds = Array.from(orderMap.keys());
+  
+  // Fetch customer names using the new API
+  let customerNamesMap = {};
+  try {
+    if (customerIds.length > 0) {
+      const customerNamesResponse = await fetchCustomerNames(customerIds);
+      if (customerNamesResponse.message === "User names fetched successfully") {
+        customerNamesResponse.customers.forEach(customer => {
+          customerNamesMap[customer.customer_id] = customer.name;
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching customer names:", error);
+  }
+
+  // Fetch delivery sequences using the new API
+  let deliverySequenceMap = {};
+  try {
+    if (customerIds.length > 0) {
+      const deliverySequenceResponse = await fetchDeliverySequence(customerIds);
+      if (deliverySequenceResponse.message === "Delivery sequence data fetched successfully") {
+        deliverySequenceResponse.data.forEach(customer => {
+          deliverySequenceMap[customer.customer_id] = customer.delivery_sequence;
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching delivery sequences:", error);
+  }
+
+  // Update orderMap with actual customer names
+  orderMap.forEach((orderData, customerId) => {
+    if (customerNamesMap[customerId]) {
+      orderData.name = customerNamesMap[customerId];
+    }
+  });
+
+  // Sort customers by delivery sequence
+  const sortedCustomerEntries = Array.from(orderMap.entries()).sort((a, b) => {
+    const seqA = deliverySequenceMap[a[0]] || 9999; // Default to high number if no sequence
+    const seqB = deliverySequenceMap[b[0]] || 9999;
+    return seqA - seqB;
+  });
+
+  // Create sorted arrays
+  const sortedOrderMap = new Map(sortedCustomerEntries);
   const productList = Array.from(allProducts);
-  const customerNames = Array.from(orderMap.values()).map(order => order.name);
+  const customerNames = Array.from(sortedOrderMap.values()).map(order => order.name);
+  const customerIdsSorted = Array.from(sortedOrderMap.keys());
   
   // Prepare Excel data with vertical headers
   const excelData = [
@@ -90,7 +141,7 @@ export const createDeliverySlipDataForRoute = async (ordersForRoute, routeName =
     const productRow = [productName];
     let totalCratesForProduct = 0;
     
-    orderMap.forEach((orderData, customerId) => {
+    sortedOrderMap.forEach((orderData, customerId) => {
       const quantity = orderData.products.find(p => p.name === productName)?.quantity || 0;
       productRow.push(quantity);
       
@@ -107,21 +158,21 @@ export const createDeliverySlipDataForRoute = async (ordersForRoute, routeName =
   let grandTotalQuantity = 0;
   let grandTotalCrates = 0;
   
-  orderMap.forEach((orderData) => {
+  sortedOrderMap.forEach((orderData) => {
     const customerTotal = orderData.products.reduce((sum, product) => sum + product.quantity, 0);
     totalsRow.push(customerTotal);
     grandTotalQuantity += customerTotal;
   });
   
-  grandTotalCrates = Array.from(orderMap.values()).reduce((total, orderData) => {
+  grandTotalCrates = Array.from(sortedOrderMap.values()).reduce((total, orderData) => {
     return total + Object.values(orderData.productCrates).reduce((sum, crates) => sum + crates, 0);
   }, 0);
   
   totalsRow.push(grandTotalCrates);
   excelData.push(totalsRow);
 
-  // Add customer ID row
-  const customerIdRow = ["Customer ID", ...Array.from(orderMap.keys()), ""];
+  // Add customer ID row (only once as requested)
+  const customerIdRow = ["Customer ID", ...customerIdsSorted, ""];
   excelData.push(customerIdRow);
 
   return {
@@ -129,7 +180,8 @@ export const createDeliverySlipDataForRoute = async (ordersForRoute, routeName =
     customerNames,
     deliveryData: excelData.slice(3), // Data without headers
     productList,
-    orderMap
+    orderMap: sortedOrderMap,
+    customerIds: customerIdsSorted
   };
 };
 
@@ -157,7 +209,7 @@ export const generateDeliveryExcelReport = async (deliverySlipData, reportType, 
   
   // Set width and rotation for customer name columns
   for (let i = 1; i < deliverySlipData.excelData[3].length; i++) {
-    ws['!cols'][i] = { wch: 10 }; // Set column width
+    ws['!cols'][i] = { wch: 15 }; // Set column width
     
     // Get cell reference for header (row 3 is headers)
     const cellRef = XLSX.utils.encode_cell({ r: 3, c: i });
@@ -221,7 +273,8 @@ export const generateDeliveryExcelReport = async (deliverySlipData, reportType, 
     deliveryData: deliverySlipData.deliveryData,
     customerNames: deliverySlipData.customerNames,
     productList: deliverySlipData.productList,
-    orderMap: deliverySlipData.orderMap
+    orderMap: deliverySlipData.orderMap,
+    customerIds: deliverySlipData.customerIds
   };
 };
 

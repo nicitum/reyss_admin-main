@@ -580,10 +580,10 @@
   white-space: nowrap;
 }
 
-.delivery-table th.vertical-header {
-  writing-mode: vertical-rl;
+.delivery-table th.horizontal-header {
+  writing-mode: horizontal-tb;
   text-orientation: mixed;
-  height: 120px;
+  height: auto;
   vertical-align: bottom;
   padding: 10px 5px;
 }

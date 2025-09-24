@@ -47,6 +47,18 @@ export const getUsers = async (search) => {
   }
 };
 
+export const getAdmins = async () => {
+  try {
+    console.log('API Call - getAdmins');
+    const response = await api.get('/fetch_admins');
+    console.log('API Response - getAdmins:', response.data);
+    return response.data.data.admins;
+  } catch (error) {
+    console.error("Error fetching admins:", error);
+    throw error;
+  }
+};
+
 export const addUser = async (userDetails) => {
   const response = await api.post(`/addUser`, userDetails);
   return response.data.data;
@@ -338,27 +350,43 @@ export const globalPriceUpdate = async (productId, newDiscountPrice) => {
 
 export const getInvoices = async (startDate = '', endDate = '') => {
   try {
+    console.log('Fetching invoices with params:', { startDate, endDate });
     const response = await api.get('/fetch-all-invoices', {
-      headers: {
-        'Content-Type': 'application/json',
-      },
       params: {
         startDate,
         endDate,
       },
     });
+    console.log('Raw API response:', response.data);
+    
+    // Backend returns { message: "...", data: [...] }
     return {
       success: true,
       data: response.data.data || [],
-      message: response.data.message,
+      message: response.data.message || 'Invoices fetched successfully',
     };
   } catch (error) {
     console.error('Error fetching invoices:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch invoices';
     return {
       success: false,
       data: [],
-      message: error.response?.data?.message || 'Failed to fetch invoices',
+      message: errorMessage,
     };
+  }
+};
+
+
+export const fetchAllPaymentTransactions = async (filters = {}) => {
+  try {
+    const queryParams = new URLSearchParams(filters).toString();
+    const url = `/fetch-all-payment-transactions${queryParams ? `?${queryParams}` : ''}`;
+    
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching payment transactions:", error);
+    throw error;
   }
 };
 
@@ -468,6 +496,31 @@ export const updateCanOrderBulk = async (customerUpdates) => {
     return response.data;
   } catch (error) {
     console.error('Error bulk updating can_order status:', error);
+    throw error;
+  }
+};
+
+
+
+// Bulk reassign customers to different admins based on route changes
+export const bulkReassignCustomersAdmin = async (assignments) => {
+  try {
+    console.log('Bulk reassign API call with assignments:', assignments);
+    
+    // Transform the assignments to match the expected API format
+    const customer_assignments = assignments.map(assignment => ({
+      customer_id: assignment.customer_id,
+      new_route: assignment.new_route
+    }));
+
+    const response = await api.post('/bulk-reassign-customers-admin', {
+      customer_assignments: customer_assignments
+    });
+    
+    console.log('Bulk reassign API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in bulk reassign customers admin:', error);
     throw error;
   }
 };
@@ -590,18 +643,6 @@ export const cancelOrder = async (orderId) => {
   }
 };
 
-// Bulk reassign customers to different admins based on route changes
-export const bulkReassignCustomersAdmin = async (customerAssignments) => {
-  try {
-    const response = await api.post('/bulk-reassign-customers-admin', {
-      customer_assignments: customerAssignments
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error in bulk reassigning customers:', error);
-    throw error;
-  }
-};
 
 // Post Invoice to API
 export const postInvoiceToAPI = async (orderId, invoiceId, orderPlacedOn) => {
@@ -697,6 +738,173 @@ export const updateAutoOrderPreferencesBulk = async (bulkUpdates) => {
     return response.data;
   } catch (error) {
     console.error('Error bulk updating auto order preferences:', error);
+    throw error;
+  }
+};
+
+export const fetchCreditLimitData = async () => {
+  try {
+    const response = await api.get("/fetch_credit_data");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credit limit data:", error);
+    throw error;
+  }
+};
+
+export const increaseCreditLimit = async (customerId, amountToIncrease) => {
+  try {
+    const response = await api.post("/increase-credit-limit", {
+      customerId,
+      amountToIncrease
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error increasing credit limit:", error);
+    throw error;
+  }
+};
+
+export const decreaseCreditLimit = async (customerId, amountToDecrease) => {
+  try {
+    const response = await api.post("/decrease-credit-limit", {
+      customerId,
+      amountToDecrease
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error decreasing credit limit:", error);
+    throw error;
+  }
+};
+
+export const collectCash = async (customerId, cash, paymentType = 'regular') => {
+  try {
+    const response = await api.post("/collect_cash", {
+      customerId,
+      cash,
+      paymentType
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error collecting cash:", error);
+    throw error;
+  }
+};
+
+export const updateAmountDue = async (customerId, amount, operation = 'add') => {
+  try {
+    // Handle both single customer_id/amount and arrays
+    let payload = {};
+    
+    if (Array.isArray(customerId) && Array.isArray(amount)) {
+      // Both are arrays - must have same length
+      if (customerId.length !== amount.length) {
+        throw new Error("Customer ID and amount arrays must have the same length");
+      }
+      
+      console.log('Sending bulk update with arrays:', { customer_id: customerId, amount: amount });
+      payload = {
+        customer_id: customerId,
+        amount: amount,
+        operation: operation
+      };
+    } else if (Array.isArray(customerId) && !Array.isArray(amount)) {
+      // Multiple customers, single amount
+      console.log('Sending bulk update with single amount:', { customer_id: customerId, amount: amount });
+      payload = {
+        customer_id: customerId,
+        amount: amount,
+        operation: operation
+      };
+    } else if (!Array.isArray(customerId) && Array.isArray(amount)) {
+      // Single customer, multiple amounts - not valid
+      throw new Error("Cannot update a single customer with multiple amounts");
+    } else {
+      // Single customer, single amount
+      console.log('Sending single update:', { customer_id: customerId, amount: amount });
+      payload = {
+        customer_id: customerId,
+        amount: amount,
+        operation: operation
+      };
+    }
+    
+    const response = await api.post("/update_amount_due", payload);
+    console.log('API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating amount due:", error);
+    throw error;
+  }
+};
+
+// Item Report API function
+export const getItemReport = async (date = null, fromDate = null, toDate = null, route = null) => {
+  try {
+    const params = {};
+    if (date) {
+      params.date = date;
+    }
+    if (fromDate) {
+      params.from_date = fromDate;
+    }
+    if (toDate) {
+      params.to_date = toDate;
+    }
+    if (route) {
+      params.route = route;
+    }
+    
+    const response = await api.get('/item-report', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching item report:', error);
+    throw error;
+  }
+};
+
+// Fetch customer names by customer IDs
+export const fetchCustomerNames = async (customerIds) => {
+  try {
+    const response = await api.get('/fetch-names', { 
+      params: { customer_id: customerIds },
+      paramsSerializer: {
+        indexes: null // This ensures array params are sent correctly
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customer names:', error);
+    throw error;
+  }
+};
+
+// Fetch delivery sequence for customer(s)
+export const fetchDeliverySequence = async (customerIds) => {
+  try {
+    const response = await api.post('/fetch-delivery-sequence', { 
+      customer_id: customerIds 
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching delivery sequence:', error);
+    throw error;
+  }
+};
+
+// Check for unique delivery sequence numbers based on customer route
+export const checkUniqueDeliverySequence = async (route, deliverySequence, customerId = null) => {
+  try {
+    const payload = { route, delivery_sequence: deliverySequence };
+    if (customerId) {
+      payload.customer_id = customerId;
+    }
+    
+    const response = await api.post('/check-unique-delivery-sequence', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking delivery sequence uniqueness:', error);
     throw error;
   }
 };
