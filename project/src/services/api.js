@@ -780,10 +780,15 @@ export const decreaseCreditLimit = async (customerId, amountToDecrease) => {
 
 export const collectCash = async (customerId, cash, paymentType = 'regular') => {
   try {
+    // Get the logged-in user ID from localStorage
+    const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
+    const collectedBy = loggedInUser?.id || null;
+    
     const response = await api.post("/collect_cash", {
       customerId,
       cash,
-      paymentType
+      paymentType,
+      collectedBy
     });
     return response.data;
   } catch (error) {
@@ -880,16 +885,45 @@ export const fetchCustomerNames = async (customerIds) => {
   }
 };
 
-// Fetch delivery sequence for customer(s)
-export const fetchDeliverySequence = async (customerIds) => {
+// Fetch cash payment details with route and admin information
+export const getCashDetails = async (fromDate, toDate) => {
   try {
-    const response = await api.post('/fetch-delivery-sequence', { 
-      customer_id: customerIds 
+    const response = await api.get('/cash_details', {
+      params: { from_date: fromDate, to_date: toDate }
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching delivery sequence:', error);
+    console.error('Error fetching cash details:', error);
     throw error;
+  }
+};
+
+// Main Wallet API functions
+export const mainWalletAPI = {
+  // Fetch all transactions
+  fetchTransactions: async () => {
+    try {
+      const response = await api.get('/main_wallet');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching main wallet transactions:', error);
+      throw error;
+    }
+  },
+  
+  // Transfer amount to main wallet
+  transfer: async (name, amount) => {
+    try {
+      const response = await api.post('/main_wallet', {
+        action: 'transfer',
+        name,
+        amount
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error transferring to main wallet:', error);
+      throw error;
+    }
   }
 };
 
@@ -905,6 +939,22 @@ export const checkUniqueDeliverySequence = async (route, deliverySequence, custo
     return response.data;
   } catch (error) {
     console.error('Error checking delivery sequence uniqueness:', error);
+    throw error;
+  }
+};
+
+// Fetch delivery sequence data for customers
+export const fetchDeliverySequence = async (customerIds) => {
+  try {
+    const response = await api.get('/fetch-delivery-sequence', {
+      params: { customer_id: customerIds },
+      paramsSerializer: {
+        indexes: null // This ensures array params are sent correctly
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching delivery sequence data:', error);
     throw error;
   }
 };

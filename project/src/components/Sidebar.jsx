@@ -8,7 +8,10 @@ const Sidebar = () => {
   const [userRole, setUserRole] = useState("");
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isMastersOpen, setIsMastersOpen] = useState(false);
+  const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTransactionsOpen, setIsTransactionsOpen] = useState(false);
+  const [isUtilityOpen, setIsUtilityOpen] = useState(false); // Added state for Utility section
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
@@ -22,8 +25,19 @@ const Sidebar = () => {
 
   const sidebarGradient =
     userRole === "superadmin"
-      ? "bg-gradient-to-b from-red-600 to-yellow-400"
+      ? "bg-gradient-to-b from-red-600 to-yellow-500"
       : "bg-gradient-to-b from-blue-600 to-purple-600";
+
+  // Define consistent hover and active states based on user role
+  const navItemActiveClass = 
+    userRole === "superadmin" 
+      ? "bg-red-700 text-white font-bold" 
+      : "bg-blue-700 text-white font-bold";
+      
+  const navItemHoverClass = 
+    userRole === "superadmin" 
+      ? "hover:bg-red-500" 
+      : "hover:bg-blue-500";
 
   return (
     <div className={`h-full w-64 text-white ${sidebarGradient} shadow-lg flex flex-col`}>
@@ -42,7 +56,7 @@ const Sidebar = () => {
         <div className="space-y-1">
           <button
             onClick={() => setIsMastersOpen(!isMastersOpen)}
-            className="flex items-center justify-between w-full px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg text-gray-200"
+            className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
           >
             <div className="flex items-center">
               <Package className="mr-3" />
@@ -60,8 +74,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/users"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >
@@ -72,8 +86,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/products"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >
@@ -84,8 +98,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/route-masters"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >
@@ -96,8 +110,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/routeswap"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >
@@ -108,8 +122,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/cutofftiming"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >
@@ -117,142 +131,93 @@ const Sidebar = () => {
                 Cut Off Timing
               </NavLink>
               
-              <NavLink
-                to="/dashboard/creditlimit"
-                className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                  }`
-                }
-              >
-                <CreditCard className="mr-3" />
-                Credit Limit
-              </NavLink>
-              
-              <NavLink
-                to="/dashboard/collectcash"
-                className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                  }`
-                }
-              >
-                <Wallet className="mr-3" />
-                Collect Cash
-              </NavLink>
-
             </div>
           )}
         </div>
 
-        <NavLink
-          to="/dashboard/placeindent"
-          className={({ isActive }) =>
-            `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-              isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-            }`
-          }
-        >
-          <ShoppingBag className="mr-3" />
-          Place Indent
-        </NavLink>
-
-        {/* Order History Page Link */}
-        <NavLink
-          to="/dashboard/orderhistory"
-          className={({ isActive }) =>
-            `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-              isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-            }`
-          }
-        >
-          <FileText className="mr-3" />
-          Order History
-        </NavLink>
+        {/* Transactions Section - New section for transaction-related items */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsTransactionsOpen(!isTransactionsOpen)}
+            className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
+          >
+            <div className="flex items-center">
+              <ShoppingBag className="mr-3" />
+              Transactions
+            </div>
+            {isTransactionsOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isTransactionsOpen && (
+            <div className="ml-6 space-y-1">
+              <NavLink
+                to="/dashboard/placeindent"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <ShoppingBag className="mr-3" />
+                Place Indent
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/orderacceptance"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <CheckCircle className="mr-3" />
+                Order Acceptance
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/updateorderprices"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <BarChart className="mr-3" />
+                Update Order Prices
+              </NavLink>
+              
+              {/* Moved Invoice link from Reports section to Transactions section */}
+              <NavLink
+                to="/dashboard/invoice"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <FileText className="mr-3" />
+                Invoice
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         {/* Super Admin Only Routes */}
         {userRole === "superadmin" && (
           <>
            
-            <NavLink
-              to="/dashboard/adminusersDetails"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <Users className="mr-3" />
-              Admin User Details
-            </NavLink>
-
-            <NavLink
-              to="/dashboard/adminordersreport"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <BarChart className="mr-3" />
-              Admin Wise Report
-            </NavLink>
-
-
-            <NavLink
-              to="/dashboard/updateorderprices"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <BarChart className="mr-3" />
-              Update Order Prices
-            </NavLink>
-
-            <NavLink
-              to="/dashboard/orderacceptance"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <CheckCircle className="mr-3" />
-              Order Acceptance
-            </NavLink>
-
-            <NavLink
-              to="/dashboard/ordercontrol"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <Settings className="mr-3" />
-              Order Control
-            </NavLink>
-
-            {/* Auto Order Preferences - New Link */}
-            <NavLink
-              to="/dashboard/autoorder"
-              className={({ isActive }) =>
-                `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                  isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                }`
-              }
-            >
-              <Clock className="mr-3" />
-              Auto Order Preferences
-            </NavLink>
+            {/* Removed Order Control - moved to Utility section */}
+            {/* Removed Auto Order Preferences - moved to Utility section */}
 
             {/* Reports Dropdown */}
             <div className="space-y-1">
               <button
                 onClick={() => setIsReportsOpen(!isReportsOpen)}
-                className="flex items-center justify-between w-full px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg text-gray-200"
+                className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
               >
                 <div className="flex items-center">
                   <BarChart className="mr-3" />
@@ -267,11 +232,37 @@ const Sidebar = () => {
               
               {isReportsOpen && (
                 <div className="ml-6 space-y-1">
+                  {/* Added Route Manager Details (renamed from Admin Users Details) */}
+                  <NavLink
+                    to="/dashboard/adminusersDetails"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <Users className="mr-3" />
+                    Route Manager Details
+                  </NavLink>
+                  
+                  {/* Added Order History to Reports section */}
+                  <NavLink
+                    to="/dashboard/orderhistory"
+                    className={({ isActive }) =>
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
+                      }`
+                    }
+                  >
+                    <FileText className="mr-3" />
+                    Order History
+                  </NavLink>
+                  
                   <NavLink
                     to="/dashboard/tallyinvoicereport"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -282,8 +273,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/tallyreceiptreport"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -294,8 +285,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/loadingslip"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -306,8 +297,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/deliveryslip"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -318,8 +309,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/brandwisereport"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -330,8 +321,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/ordersummary"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -339,23 +330,13 @@ const Sidebar = () => {
                     Order Summary
                   </NavLink>
                   
-                  <NavLink
-                    to="/dashboard/invoice"
-                    className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
-                      }`
-                    }
-                  >
-                    <FileText className="mr-3" />
-                    Invoice
-                  </NavLink>
+                  {/* Removed Invoice link from Reports section as it's moved to Transactions section */}
                   
                   <NavLink
                     to="/dashboard/paymentsreport"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -366,8 +347,8 @@ const Sidebar = () => {
                   <NavLink
                     to="/dashboard/itemsreport"
                     className={({ isActive }) =>
-                      `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                        isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                      `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                        isActive ? navItemActiveClass : "text-gray-200"
                       }`
                     }
                   >
@@ -393,11 +374,127 @@ const Sidebar = () => {
           </div>
         )}
 
+        {/* Collections Dropdown - Moved here to appear just above Settings */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}
+            className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
+          >
+            <div className="flex items-center">
+              <CreditCard className="mr-3" />
+              Collections
+            </div>
+            {isCollectionsOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isCollectionsOpen && (
+            <div className="ml-6 space-y-1">
+              <NavLink
+                to="/dashboard/creditlimit"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <CreditCard className="mr-3" />
+                Credit Limit
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/collectcash"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <Wallet className="mr-3" />
+                Collect Cash
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/cashwallet"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <Wallet className="mr-3" />
+                Cash Wallet
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/slemainaccount"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <Wallet className="mr-3" />
+                SLE Main Account
+              </NavLink>
+            </div>
+          )}
+        </div>
+
+        {/* Utility Section - New section for utility-related items */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsUtilityOpen(!isUtilityOpen)}
+            className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
+          >
+            <div className="flex items-center">
+              <Settings className="mr-3" />
+              Utility
+            </div>
+            {isUtilityOpen ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isUtilityOpen && (
+            <div className="ml-6 space-y-1">
+              <NavLink
+                to="/dashboard/autoorder"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <Clock className="mr-3" />
+                Auto Order Preferences
+              </NavLink>
+              
+              <NavLink
+                to="/dashboard/ordercontrol"
+                className={({ isActive }) =>
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
+                  }`
+                }
+              >
+                <Settings className="mr-3" />
+                Order Control
+              </NavLink>
+            </div>
+          )}
+        </div>
+
         {/* Settings Dropdown at Bottom */}
         <div className="space-y-1 mt-auto flex-shrink-0">
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className="flex items-center justify-between w-full px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg text-gray-200"
+            className={`flex items-center justify-between w-full px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg text-gray-200`}
           >
             <div className="flex items-center">
               <Settings className="mr-3" />
@@ -415,8 +512,8 @@ const Sidebar = () => {
               <NavLink
                 to="/dashboard/fontsettings"
                 className={({ isActive }) =>
-                  `flex items-center px-6 py-3 hover:bg-orange-500 transition-colors rounded-lg ${
-                    isActive ? "bg-orange-500 text-white font-bold" : "text-gray-200"
+                  `flex items-center px-6 py-3 ${navItemHoverClass} transition-colors rounded-lg ${
+                    isActive ? navItemActiveClass : "text-gray-200"
                   }`
                 }
               >

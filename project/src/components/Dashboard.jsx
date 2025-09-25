@@ -1,32 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import UsersTab from './UsersTab';
-import ProductsTab from './ProductsTab';
-import RouteMasters from './RouteMasters';
-import RouteSwap from './RouteSwap';
+import UsersTab from './Masters/UsersMasters/UsersTab';
+import ProductMasters from './Masters/ProductMasters/ProductMasters';
+import RouteMasters from './Masters/RouteMasters';
+import RouteSwap from './Masters/RouteSwap';
 
-import AdminUserDetails from './AdminUsersDetails';
-import AdminOrdersReport from './AdminOrdersReport';
-import BrandWiseReport from './BrandWiseReport';
-import UpdateOrderPrices from './UpdateOrderPrices';
-import TallyInvoiceReport from './TallyInvoiceReport';
-import TallyReceiptReport from './TallyReceiptReport';
-import LoadingSlip from './LoadingSlip';
-import DeliverySlip from './DeliverySlip';
-import PlaceOrderFlow from './PlaceIndent';
-import OrderAcceptance from './OrderAcceptance';
-import OrderControl from './OrderControl';
-import Invoice from './Invoice';
-import CutOffTiming from './CutOffTiming';
+import AdminUserDetails from './Reports/AdminUsersDetails';
+import AdminOrdersReport from './Reports/AdminOrdersReport';
+import BrandWiseReport from './Reports/BrandWiseReport';
+import UpdateOrderPrices from './Transactions/PlaceIndent/UpdateOrderPrices';
+import TallyInvoiceReport from './Reports/TallyInvoiceReport';
+import TallyReceiptReport from './Reports/TallyReceiptReport';
+import LoadingSlip from './Reports/LoadingSlip';
+import DeliverySlip from './Reports/DeliverySlip';
+import PlaceOrderFlow from './Transactions/PlaceIndent';
+import OrderAcceptance from './Transactions/PlaceIndent/OrderAcceptance';
+import OrderControl from './Utility/OrderControl';
+import Invoice from './Transactions/PlaceIndent/Invoice';
+import CutOffTiming from './Masters/CutOffTiming';
 import FontSettings from './FontSettings';
-import OrderHistoryPage from './OrderHistoryPage';
-import OrderSummaryPage from './OrderSummaryPage';
-import AutoOrderPage from './AutoOrderPage';
-import CreditLimit from './CreditLimit';
-import CollectCash from './CollectCash';
-import PaymentsReport from './PaymentsReport';
-import ItemsReport from './ItemsReport';
+import OrderHistoryPage from './Reports/OrderHistoryPage';
+import OrderSummaryPage from './Reports/OrderSummaryPage';
+import CreditLimit from './Collections/CreditLimit';
+import CollectCash from './Collections/CollectCash';
+import PaymentsReport from './Reports/PaymentsReport';
+import ItemsReport from './Reports/ItemsReport';
+import CashWallet from './Collections/CashWallet';
+import SLEMainAccount from './Collections/SLEMainAccount';
+import AutoOrderPage from './Utility/AutoOrderPage';
 
 export default function Dashboard() {
   const [loggedInUser, setLoggedInUser] = useState(null);
@@ -59,7 +61,7 @@ export default function Dashboard() {
             
             <Routes>
               <Route path="/users" element={<UsersTab />} />
-              <Route path="/products" element={<ProductsTab />} />
+              <Route path="/products" element={<ProductMasters />} />
               <Route path="/route-masters" element={<RouteMasters />} />
               <Route path="/routeswap" element={<RouteSwap />} />
               <Route path="/adminusersDetails" element={<AdminUserDetails />} />
@@ -68,7 +70,6 @@ export default function Dashboard() {
               <Route path="/updateorderprices" element={<UpdateOrderPrices />} />
               <Route path="/orderacceptance" element={<OrderAcceptance />} />
               <Route path="/ordercontrol" element={<OrderControl />} />
-              <Route path="/autoorder" element={<AutoOrderPage />} />
               <Route path="/tallyinvoicereport" element={<TallyInvoiceReport />} />
               <Route path="/tallyreceiptreport" element={<TallyReceiptReport />} />
               <Route path="/loadingslip" element={<LoadingSlip />} />
@@ -79,10 +80,13 @@ export default function Dashboard() {
               <Route path="/fontsettings" element={<FontSettings />} />
               <Route path="/orderhistory" element={<OrderHistoryPage />} />
               <Route path="/ordersummary" element={<OrderSummaryPage />} />
+               <Route path="/autoorder" element={<AutoOrderPage />} />
               <Route path="/creditlimit" element={<CreditLimit />} />
               <Route path="/collectcash" element={<CollectCash />} />
               <Route path="/paymentsreport" element={<PaymentsReport />} />
               <Route path="/itemsreport" element={<ItemsReport />} />
+              <Route path="/cashwallet" element={<CashWallet />} />
+              <Route path="/slemainaccount" element={<SLEMainAccount />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
