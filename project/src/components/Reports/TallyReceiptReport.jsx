@@ -179,7 +179,7 @@ const TallyReceiptReport = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Professional Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Tally Receipt Report</h1>
@@ -239,7 +239,7 @@ const TallyReceiptReport = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Receipt Count Display */}
         <div className="mb-6 bg-white rounded-xl shadow-md p-4">
           <div className="flex items-center justify-between">

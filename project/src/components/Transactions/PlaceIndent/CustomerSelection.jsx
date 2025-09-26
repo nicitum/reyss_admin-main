@@ -628,7 +628,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -645,7 +645,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2">
@@ -1117,7 +1117,7 @@ export default function CustomerSelection({ onCustomerSelect, selectedCustomer }
         {/* Selected Customer Summary & Next Button */}
         {selectedCustomer && (
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-xl">
-            <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="max-w-full mx-auto px-4 py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">

@@ -92,7 +92,7 @@ const SLEMainAccount = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Professional Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">SLE Main Account</h1>
@@ -145,14 +145,14 @@ const SLEMainAccount = () => {
 
       {/* Transactions List */}
       {loading ? (
-        <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600 font-medium">Loading main account transactions...</p>
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           {getFilteredTransactions().length > 0 ? (
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
               <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-3">

@@ -208,12 +208,12 @@ export default function ProductMasters() {
     setSelectedCategory("");
     setCurrentPage(1);
   };
-
+//grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Products Management</h1>
@@ -231,7 +231,7 @@ export default function ProductMasters() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3">
@@ -397,14 +397,15 @@ export default function ProductMasters() {
                             
                             <div className="flex items-center justify-between">
                               <div className="flex items-center text-gray-600 text-sm">
-                                <span>Base:</span>
+                                <span>MRP:</span>
                                 <div className="flex items-center font-medium text-gray-900 ml-1">
                                   <IndianRupee className="h-3 w-3" />
                                   {Number(product.price || 0).toFixed(2)}
                                 </div>
                               </div>
-                              
+                             
                               <div className="flex items-center text-orange-600 font-bold">
+                                 <span>Selling Price :</span>
                                 <IndianRupee className="h-3 w-3" />
                                 {Number(product.discountPrice || product.price || 0).toFixed(2)}
                               </div>
@@ -666,7 +667,7 @@ export default function ProductMasters() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Base Price
+                            MRP
                           </label>
                           <input
                             type="number"
@@ -681,7 +682,7 @@ export default function ProductMasters() {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Discount Price
+                            Selling Price
                           </label>
                           <input
                             type="number"

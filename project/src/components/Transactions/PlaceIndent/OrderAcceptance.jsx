@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { getOrdersWithDateRange, updateOrderStatus, getCustomerRoute, getRoutes } from '../../../services/api';
+import { getOrdersWithDateRange, updateOrderStatus, getCustomerRoute, getRoutes, cancelOrder } from '../../../services/api';
 import { filterOrdersByRoutes } from '../../../utils/deliverySlipHelper';
 import '../../CSS/OrderManagement.css';
 
@@ -250,6 +250,36 @@ const OrderAcceptance = () => {
     }
   };
 
+  const handleBulkCancel = async () => {
+    if (selectedOrders.size === 0) {
+      toast.error('Please select at least one order to cancel');
+      return;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to cancel ${selectedOrders.size} order(s)? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setBulkUpdating(true);
+      const orderIds = Array.from(selectedOrders);
+      
+      const response = await cancelOrder(orderIds);
+      
+      if (response.success) {
+        toast.success(`Successfully cancelled ${response.cancelledOrders} order(s)!`);
+        await fetchOrders();
+        setSelectedOrders(new Set());
+      } else {
+        toast.error(response.message || 'Failed to cancel orders');
+      }
+    } catch (error) {
+      console.error('Error cancelling orders:', error);
+      toast.error('Failed to cancel orders. Please try again.');
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       'Pending': 'orange',
@@ -375,6 +405,13 @@ const OrderAcceptance = () => {
                 className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
                 {bulkUpdating ? 'Processing...' : `Reject Selected (${selectedOrders.size})`}
+              </button>
+              <button
+                onClick={handleBulkCancel}
+                disabled={bulkUpdating || selectedOrders.size === 0}
+                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
+              >
+                {bulkUpdating ? 'Processing...' : `Cancel Selected (${selectedOrders.size})`}
               </button>
             </div>
           </div>

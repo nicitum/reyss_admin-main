@@ -372,7 +372,7 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -418,7 +418,7 @@ export default function ProductCatalogue({ selectedCustomer, onBack, onOrderPlac
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2">

@@ -38,6 +38,13 @@ const Invoice = () => {
       filteredOrders = filteredOrders.filter(order => order.order_type === 'PM' || order.order_type === 'Evening');
     }
     
+    // Only show orders that are eligible for invoicing:
+    // approve_status must be 'Accepted' and cancelled must be 'No'
+    filteredOrders = filteredOrders.filter(order => 
+      order.approve_status === 'Accepted' && 
+      order.cancelled !== 'Yes'
+    );
+    
     return filteredOrders;
   }, [orders, selectedRoute, selectedRoutes, customerRoutes, routes, orderTypeFilter]);
 
@@ -553,12 +560,18 @@ const Invoice = () => {
   const generateBulkInvoices = useCallback(async () => {
     let ordersToProcess = [];
     if (selectAllChecked) {
-      ordersToProcess = getFilteredOrders();
+      ordersToProcess = getFilteredOrders(); // This now only includes eligible orders
     } else {
-      ordersToProcess = getFilteredOrders().filter(order => selectedOrderIds.includes(order.id));
+      // Filter selected orders to only include eligible ones
+      ordersToProcess = getFilteredOrders().filter(order => 
+        selectedOrderIds.includes(order.id) && 
+        order.approve_status === 'Accepted' && 
+        order.cancelled !== 'Yes'
+      );
     }
 
     if (ordersToProcess.length === 0) {
+      toast.error("No eligible orders selected for invoicing. Only accepted, non-cancelled orders can be invoiced.");
       return;
     }
 
@@ -571,6 +584,7 @@ const Invoice = () => {
       }
     } catch (error) {
       console.error("Error generating bulk invoices:", error);
+      toast.error("Error generating invoices. Please try again.");
     } finally {
       setGeneratingInvoice(false);
     }
@@ -587,9 +601,17 @@ const Invoice = () => {
 
   // Handle Select All Checkbox Change
   const handleSelectAllCheckboxChange = useCallback(() => {
-    setSelectAllChecked(prev => !prev);
-    setSelectedOrderIds([]);
-  }, []);
+    if (selectAllChecked) {
+      // If currently selecting all, deselect all
+      setSelectAllChecked(false);
+      setSelectedOrderIds([]);
+    } else {
+      // Select only eligible orders
+      setSelectAllChecked(true);
+      // We don't need to set selectedOrderIds when selectAllChecked is true
+      // The getFilteredOrders() function will provide the eligible orders
+    }
+  }, [selectAllChecked]);
 
   // Initial Fetch on Component Mount
   useEffect(() => {
@@ -686,7 +708,11 @@ const Invoice = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <span className="text-sm font-medium text-gray-700">
-                {selectAllChecked ? getFilteredOrders().length : selectedOrderIds.length} order(s) selected
+                {selectAllChecked ? getFilteredOrders().length : selectedOrderIds.filter(id => 
+                  getFilteredOrders().some(order => order.id === id && 
+                    order.approve_status === 'Accepted' && 
+                    order.cancelled !== 'Yes')
+                ).length} order(s) eligible for invoicing
               </span>
               <button
                 onClick={handleSelectAllCheckboxChange}
@@ -698,10 +724,22 @@ const Invoice = () => {
             <div className="flex space-x-3">
               <button
                 onClick={generateBulkInvoices}
-                disabled={generatingInvoice || (selectAllChecked ? false : selectedOrderIds.length === 0)}
+                disabled={generatingInvoice || (selectAllChecked ? getFilteredOrders().length === 0 : 
+                  selectedOrderIds.filter(id => 
+                    getFilteredOrders().some(order => order.id === id && 
+                      order.approve_status === 'Accepted' && 
+                      order.cancelled !== 'Yes')
+                  ).length === 0)}
                 className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
-                {generatingInvoice ? 'Downloading...' : `Download Selected Invoices (${selectAllChecked ? getFilteredOrders().length : selectedOrderIds.length})`}
+                {generatingInvoice ? 'Downloading...' : `Download Selected Invoices (${
+                  selectAllChecked ? getFilteredOrders().length : 
+                  selectedOrderIds.filter(id => 
+                    getFilteredOrders().some(order => order.id === id && 
+                      order.approve_status === 'Accepted' && 
+                      order.cancelled !== 'Yes')
+                  ).length
+                })`}
               </button>
             </div>
           </div>
@@ -744,7 +782,12 @@ const Invoice = () => {
                           type="checkbox"
                           checked={selectedOrderIds.includes(order.id)}
                           onChange={() => handleOrderCheckboxChange(order.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          disabled={order.approve_status !== 'Accepted' || order.cancelled === 'Yes'}
+                          className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${
+                            order.approve_status !== 'Accepted' || order.cancelled === 'Yes'
+                              ? 'cursor-not-allowed opacity-50'
+                              : ''
+                          }`}
                         />
                       )}
                     </td>
@@ -777,13 +820,32 @@ const Invoice = () => {
                     <td>
                       <button
                         onClick={() => generateInvoice(order)}
-                        disabled={generatingInvoice}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm transition-colors"
+                        disabled={generatingInvoice || order.approve_status !== 'Accepted' || order.cancelled === 'Yes'}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                          generatingInvoice || order.approve_status !== 'Accepted' || order.cancelled === 'Yes'
+                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                        title={
+                          order.approve_status !== 'Accepted' 
+                            ? 'Order must be accepted to generate invoice' 
+                            : order.cancelled === 'Yes' 
+                            ? 'Cannot generate invoice for cancelled order' 
+                            : 'Generate invoice for this order'
+                        }
                       >
                         Print Invoice
                       </button>
+                      {(order.approve_status !== 'Accepted' || order.cancelled === 'Yes') && (
+                        <div className="text-xs text-red-500 mt-1">
+                          {order.approve_status !== 'Accepted' 
+                            ? `Status: ${order.approve_status || 'Not Accepted'}` 
+                            : 'Order Cancelled'}
+                        </div>
+                      )}
                     </td>
                   </tr>
+
                 ))}
               </tbody>
             </table>

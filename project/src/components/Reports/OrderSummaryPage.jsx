@@ -129,9 +129,9 @@ const OrderSummaryPage = () => {
       const query = searchTerm.toLowerCase();
       filteredOrders = filteredOrders.filter(order => 
         order.id.toString().includes(query) ||
-        order.customer_id.toLowerCase().includes(query) ||
+        (order.customer_id && order.customer_id.toLowerCase().includes(query)) ||
         (customerRoutes[order.customer_id] && customerRoutes[order.customer_id].toLowerCase().includes(query)) ||
-        order.approve_status.toLowerCase().includes(query)
+        (order.approve_status && order.approve_status.toLowerCase().includes(query))
       );
     }
     
@@ -199,7 +199,7 @@ const OrderSummaryPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Professional Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Summary</h1>
@@ -306,7 +306,7 @@ const OrderSummaryPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
             <div className="flex items-center">

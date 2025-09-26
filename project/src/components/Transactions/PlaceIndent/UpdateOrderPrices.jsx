@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   Search, Calendar, Package, ShoppingCart, IndianRupee, Edit3, Trash2, 
-  Save, X, ChevronDown, ChevronUp, Clock, Filter, User
+  Save, X, ChevronDown, ChevronUp, Clock, Filter, User, CheckSquare, Square
 } from 'lucide-react';
 import { 
   getOrderProducts, updateOrderPrice, getProducts, getOrdersWithDateRange, 
@@ -22,6 +22,9 @@ const OrderManagement = () => {
   const [editedQuantities, setEditedQuantities] = useState({});
   const [productsMaster, setProductsMaster] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  // Bulk selection state
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   // CORRECTED GST Calculation: API returns base price, not GST-inclusive price
   const calculateFinalPrice = (basePrice, gstRate) => {
@@ -306,16 +309,79 @@ const OrderManagement = () => {
     const query = searchTerm.toLowerCase();
     return (
       order.id.toString().includes(query) ||
-      order.customer_id.toLowerCase().includes(query) ||
-      order.approve_status.toLowerCase().includes(query)
+      (order.customer_id && order.customer_id.toLowerCase().includes(query)) ||
+      (order.approve_status && order.approve_status.toLowerCase().includes(query))
     );
   });
+
+  // Bulk selection functions
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const filteredOrders = orders.filter(order => {
+      if (!searchTerm) return true;
+      const query = searchTerm.toLowerCase();
+      return (
+        order.id.toString().includes(query) ||
+        (order.customer_id && order.customer_id.toLowerCase().includes(query)) ||
+        (order.approve_status && order.approve_status.toLowerCase().includes(query))
+      );
+    });
+    
+    const eligibleOrders = filteredOrders.filter(order => order.cancelled !== 'Yes');
+    
+    if (selectedOrders.size === eligibleOrders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(eligibleOrders.map(order => order.id)));
+    }
+  };
+
+  const handleBulkCancel = async () => {
+    if (selectedOrders.size === 0) {
+      toast.error('Please select at least one order to cancel');
+      return;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to cancel ${selectedOrders.size} order(s)? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setBulkUpdating(true);
+      const orderIds = Array.from(selectedOrders);
+      
+      const response = await cancelOrder(orderIds);
+      
+      if (response.success) {
+        toast.success(`Successfully cancelled ${response.cancelledOrders} order(s)!`);
+        await fetchOrders();
+        setSelectedOrders(new Set());
+      } else {
+        toast.error(response.message || 'Failed to cancel orders');
+      }
+    } catch (error) {
+      console.error('Error cancelling orders:', error);
+      toast.error('Failed to cancel orders. Please try again.');
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Professional Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Management System</h1>
@@ -325,6 +391,41 @@ const OrderManagement = () => {
               <ShoppingCart className="h-8 w-8 text-orange-600" />
             </div>
           </div>
+
+          {/* Bulk Actions */}
+          {orders.length > 0 && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedOrders.size} order(s) selected
+                  </span>
+                  <button
+                    onClick={handleSelectAll}
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {selectedOrders.size === orders.filter(order => order.cancelled !== 'Yes').length && selectedOrders.size > 0 ? 'Deselect All' : 'Select All Eligible'}
+                  </button>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleBulkCancel}
+                    disabled={bulkUpdating || selectedOrders.size === 0}
+                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium flex items-center"
+                  >
+                    {bulkUpdating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      `Cancel Selected (${selectedOrders.size})`
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Professional Filters */}
           <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6 text-white">
@@ -396,7 +497,7 @@ const OrderManagement = () => {
       </div>
 
       {/* Orders Cards */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-full mx-auto px-4 py-6">
         {loading ? (
           <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -419,17 +520,27 @@ const OrderManagement = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-blue-100 rounded-full p-2">
-                              <ShoppingCart className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
-                              <p className="text-sm text-gray-500">
-                                {new Date(order.placed_on * 1000).toLocaleDateString('en-IN', {
-                                  day: '2-digit', month: 'short', year: 'numeric'
-                                })}
-                              </p>
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrders.has(order.id)}
+                              onChange={() => handleSelectOrder(order.id)}
+                              disabled={isCancelled}
+                              className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4 mt-1"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-blue-100 rounded-full p-2">
+                                <ShoppingCart className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Order #{order.id}</h3>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(order.placed_on * 1000).toLocaleDateString('en-IN', {
+                                    day: '2-digit', month: 'short', year: 'numeric'
+                                  })}
+                                </p>
+                              </div>
                             </div>
                           </div>
 

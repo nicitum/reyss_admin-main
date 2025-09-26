@@ -45,11 +45,11 @@ export default function UsersTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [routes, setRoutes] = useState([]);
   const [newUser, setNewUser] = useState({
-    username: "",
     customer_id: "",
     phone: "",
     password: "",
     name: "",
+    delivery_address: "",
     route: "",
     price_tier: "",
     delivery_sequence: "",
@@ -67,7 +67,8 @@ export default function UsersTab() {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.customer_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.phone?.includes(searchTerm) ||
-                         user.route?.toLowerCase().includes(searchTerm.toLowerCase());
+                         user.route?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.delivery_address?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     
@@ -257,11 +258,11 @@ export default function UsersTab() {
       await fetchUsers(searchTerm);
       setShowAddModal(false);
       setNewUser({
-        username: "",
         customer_id: "",
         phone: "",
         password: "",
         name: "",
+        delivery_address: "",
         route: "",
         price_tier: "",
         delivery_sequence: "",
@@ -315,7 +316,7 @@ export default function UsersTab() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Professional Header */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
@@ -340,7 +341,7 @@ export default function UsersTab() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
-                    placeholder="Search by name, ID or phone..."
+                    placeholder="Search by name, ID, phone, route or address..."
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
@@ -384,7 +385,7 @@ export default function UsersTab() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Users Count Display */}
         <div className="mb-6 bg-white rounded-xl shadow-md p-4">
           <div className="flex items-center justify-between">
@@ -407,60 +408,84 @@ export default function UsersTab() {
           </div>
         </div>
 
+        {/* Expanded container width for better table display */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
             <h2 className="text-xl font-semibold text-white">User Accounts</h2>
           </div>
           
-          <UserTable
-            users={paginatedUsers}
-            onEditUser={loggedInUser?.role === "superadmin" ? handleEditUser : null}
-            onToggleBlock={handleToggleBlock}
-          />
-
-          {/* Pagination */}
+          {/* Improved responsive container with better width management */}
+          <div className="w-full">
+            <UserTable
+              users={paginatedUsers}
+              onEditUser={loggedInUser?.role === "superadmin" ? handleEditUser : null}
+              onToggleBlock={handleToggleBlock}
+            />
+          </div>
+          
+          {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Page <span className="font-medium">{currentPage}</span> of{" "}
-                  <span className="font-medium">{totalPages}</span>
+                <div className="flex items-center text-sm text-gray-700">
+                  <span>
+                    Page <span className="font-medium">{currentPage}</span> of{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </span>
                 </div>
-                
-                <div className="flex space-x-2">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
+                    className={`p-2 rounded-lg ${
+                      currentPage === 1
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-orange-600 hover:bg-orange-100 transition-colors duration-200'
+                    }`}
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
                   
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors duration-200 ${
-                          currentPage === pageNum
-                            ? "bg-orange-500 text-white"
-                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                  {/* Page Numbers */}
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                            currentPage === pageNum
+                              ? 'bg-orange-500 text-white'
+                              : 'text-gray-700 hover:bg-orange-100'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
                   
                   <button
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center"
+                    className={`p-2 rounded-lg ${
+                      currentPage === totalPages
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-orange-600 hover:bg-orange-100 transition-colors duration-200'
+                    }`}
                   >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
@@ -550,6 +575,20 @@ export default function UsersTab() {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                            Delivery Address
+                          </label>
+                          <input
+                            type="text"
+                            value={newUser.delivery_address}
+                            onChange={(e) => setNewUser({ ...newUser, delivery_address: e.target.value })}
+                            placeholder="Enter delivery address"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:ring-orange-500 transition-all duration-200"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <Hash className="h-4 w-4 mr-2 text-gray-500" />
                             Customer ID
                           </label>
@@ -566,20 +605,14 @@ export default function UsersTab() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <User className="h-4 w-4 mr-2 text-gray-500" />
-                            Username
+                            Password
                           </label>
                           <input
                             type="text"
                             required
-                            value={newUser.username}
-                            onChange={(e) =>
-                              setNewUser({
-                                ...newUser,
-                                username: e.target.value,
-                                password: e.target.value, // Setting password same as username for now
-                              })
-                            }
-                            placeholder="Enter username"
+                            value={newUser.password}
+                            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                            placeholder="Enter password"
                             className="w-full rounded-lg border border-gray-300 px-4 py-3 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:ring-orange-500 transition-all duration-200"
                           />
                         </div>

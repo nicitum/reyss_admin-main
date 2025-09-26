@@ -40,6 +40,13 @@ const LoadingSlip = () => {
     }
     // If orderTypeFilter is 'All', no additional filtering is applied
     
+    // Only show orders that are eligible for loading slip generation:
+    // approve_status must be 'Accepted' and cancelled must be 'No'
+    filteredOrders = filteredOrders.filter(order => 
+      order.approve_status === 'Accepted' && 
+      order.cancelled !== 'Yes'
+    );
+    
     return filteredOrders;
   }, [orders, selectedRoute, selectedRoutes, customerRoutes, routes, orderTypeFilter]);
 
@@ -58,16 +65,15 @@ const LoadingSlip = () => {
 
   const handleSelectAll = () => {
     const filteredOrders = getFilteredOrders();
-    const eligibleOrders = filteredOrders.filter(order => order.cancelled !== 'Yes');
-    const allEligibleSelected = eligibleOrders.every(order => selectedOrders.has(order.id));
+    const allSelected = filteredOrders.every(order => selectedOrders.has(order.id));
     
-    if (allEligibleSelected) {
+    if (allSelected) {
       // Deselect all
       setSelectedOrders(new Set());
     } else {
       // Select all eligible orders
-      const eligibleOrderIds = eligibleOrders.map(order => order.id);
-      setSelectedOrders(new Set(eligibleOrderIds));
+      const orderIds = filteredOrders.map(order => order.id);
+      setSelectedOrders(new Set(orderIds));
     }
   };
 
@@ -158,26 +164,21 @@ const LoadingSlip = () => {
     // Use selected orders if any are selected, otherwise use all eligible filtered orders
     let ordersToProcess;
     if (selectedOrders.size > 0) {
-      ordersToProcess = filteredOrders.filter(order => selectedOrders.has(order.id) && order.cancelled !== 'Yes');
+      ordersToProcess = filteredOrders.filter(order => selectedOrders.has(order.id));
       
       if (ordersToProcess.length === 0) {
-        toast.error("No eligible selected orders found. Please select non-cancelled orders.", { duration: 2000 });
+        toast.error("No eligible selected orders found.", { duration: 2000 });
         return;
       }
       
       toast.success(`Generating loading slips for ${ordersToProcess.length} selected orders.`, { duration: 2000 });
     } else {
-      // Filter out cancelled orders - only process non-cancelled orders from filtered results
-      ordersToProcess = filteredOrders.filter(order => order.cancelled !== 'Yes');
+      // Use all eligible filtered orders
+      ordersToProcess = filteredOrders;
       
       if (ordersToProcess.length === 0) {
-        toast.error("No eligible orders found. All orders are cancelled.", { duration: 2000 });
+        toast.error("No eligible orders found.", { duration: 2000 });
         return;
-      }
-
-      if (ordersToProcess.length < filteredOrders.length) {
-        const cancelledCount = filteredOrders.length - ordersToProcess.length;
-        toast.success(`${cancelledCount} cancelled orders excluded from loading slip generation.`, { duration: 2000 });
       }
     }
 
@@ -283,6 +284,11 @@ const LoadingSlip = () => {
             </div>
           </div>
         </div>
+        <div className="filter-note">
+          <p className="text-sm text-gray-600">
+            Note: Only orders with <strong>Approve Status: Accepted</strong> and <strong>Cancelled: No</strong> are shown and eligible for loading slip generation.
+          </p>
+        </div>
       </div>
 
       {/* Bulk Actions */}
@@ -297,7 +303,7 @@ const LoadingSlip = () => {
                 onClick={handleSelectAll}
                 className="text-sm text-blue-600 hover:text-blue-800 underline"
               >
-                {getFilteredOrders().filter(order => order.cancelled !== 'Yes').every(order => selectedOrders.has(order.id)) && getFilteredOrders().filter(order => order.cancelled !== 'Yes').length > 0 
+                {getFilteredOrders().every(order => selectedOrders.has(order.id)) && getFilteredOrders().length > 0 
                   ? 'Deselect All' 
                   : 'Select All Eligible'}
               </button>
@@ -305,23 +311,23 @@ const LoadingSlip = () => {
             <div className="flex space-x-3">
               <button
                 onClick={() => handleGenerateLoadingSlip(true)}
-                disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().filter(order => order.cancelled !== 'Yes').length === 0}
+                disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().length === 0}
                 className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
                 {generatingSlip || bulkUpdating ? 'Generating...' : 
                   selectedOrders.size > 0 
                     ? `Download Selected (${selectedOrders.size})` 
-                    : `Download All Eligible (${getFilteredOrders().filter(order => order.cancelled !== 'Yes').length})`}
+                    : `Download All Eligible (${getFilteredOrders().length})`}
               </button>
               <button
                 onClick={() => handleGenerateLoadingSlip(false)}
-                disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().filter(order => order.cancelled !== 'Yes').length === 0}
+                disabled={loading || generatingSlip || bulkUpdating || orders.length === 0 || getFilteredOrders().length === 0}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium"
               >
                 {generatingSlip || bulkUpdating ? 'Generating...' : 
                   selectedOrders.size > 0 
                     ? `View Selected (${selectedOrders.size})` 
-                    : `View All Eligible (${getFilteredOrders().filter(order => order.cancelled !== 'Yes').length})`}
+                    : `View All Eligible (${getFilteredOrders().length})`}
               </button>
             </div>
           </div>
@@ -339,7 +345,7 @@ const LoadingSlip = () => {
                   <th>
                     <input
                       type="checkbox"
-                      checked={getFilteredOrders().filter(order => order.cancelled !== 'Yes').every(order => selectedOrders.has(order.id)) && getFilteredOrders().filter(order => order.cancelled !== 'Yes').length > 0}
+                      checked={getFilteredOrders().every(order => selectedOrders.has(order.id)) && getFilteredOrders().length > 0}
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
@@ -363,8 +369,7 @@ const LoadingSlip = () => {
                         type="checkbox"
                         checked={selectedOrders.has(order.id)}
                         onChange={() => handleSelectOrder(order.id)}
-                        disabled={order.cancelled === 'Yes'}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </td>
                     <td className="font-semibold">#{order.id}</td>

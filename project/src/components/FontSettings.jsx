@@ -18,7 +18,7 @@ const FontSettings = () => {
   const fontSizeOptions = getFontSizeOptions();
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-full mx-auto px-4 py-6">
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Font Settings</h1>
         <p className="text-gray-600 mb-8">Customize the font size for better readability</p>

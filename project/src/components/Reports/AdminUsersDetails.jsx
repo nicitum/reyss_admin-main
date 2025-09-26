@@ -55,11 +55,11 @@ const AdminUserDetails = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin User Details</h1>
-              <p className="text-gray-600 mt-1">View users assigned to specific administrators</p>
+              <h1 className="text-3xl font-bold text-gray-900">Route Manager User Details</h1>
+              <p className="text-gray-600 mt-1">View users assigned to specific route managers</p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
               <User className="h-8 w-8 text-orange-600" />
@@ -68,7 +68,7 @@ const AdminUserDetails = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Summary Card - Moved to top */}
         {selectedAdmin && (
           <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl shadow-lg p-5 text-white mb-6">

@@ -6,7 +6,9 @@ import {
   CheckCircle,
   AlertCircle,
   Filter,
-  Wallet
+  Wallet,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { fetchCreditLimitData, collectCash } from "../../services/api";
 import { toast } from 'react-hot-toast';
@@ -22,6 +24,8 @@ export default function CollectCash() {
   const [showConfirmation, setShowConfirmation] = useState({});
   const [confirmationAmount, setConfirmationAmount] = useState({});
   const [paymentType, setPaymentType] = useState({}); // 'regular' or 'advance'
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,6 +49,7 @@ export default function CollectCash() {
     fetchData();
   }, []);
 
+  // Filter data based on search term
   useEffect(() => {
     // Filter data based on search term
     if (searchTerm) {
@@ -57,6 +62,8 @@ export default function CollectCash() {
     } else {
       setFilteredData(creditData);
     }
+    // Reset to first page when search changes
+    setCurrentPage(1);
   }, [searchTerm, creditData]);
 
   const handleAmountChange = (customerId, value) => {
@@ -242,11 +249,16 @@ export default function CollectCash() {
     );
   }
 
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100">
       {/* Header Section */}
       <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -263,7 +275,7 @@ export default function CollectCash() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-full mx-auto px-4 py-6">
         {/* Search Section */}
         <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2">
@@ -302,191 +314,263 @@ export default function CollectCash() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount Due
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cash Paid
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Advance Receipt
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Credit Limit
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredData.map((item) => (
-                    <tr key={item.customer_id} className="hover:bg-orange-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">#{item.customer_id}</div>
-                            {item.customer_name && (
-                              <div className="text-sm text-gray-500">{item.customer_name}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-red-600 font-bold">
-                          <IndianRupee className="h-4 w-4 mr-1" />
-                          {parseFloat(item.amount_due || 0) > 0 ? parseFloat(item.amount_due || 0).toFixed(2) : '0.00'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-green-600 font-bold">
-                          <IndianRupee className="h-4 w-4 mr-1" />
-                          {parseFloat(item.amount_paid_cash || 0) > 0 ? parseFloat(item.amount_paid_cash || 0).toFixed(2) : '0.00'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-blue-600 font-bold">
-                          <IndianRupee className="h-4 w-4 mr-1" />
-                          {parseFloat(item.advance_payment || 0) > 0 ? parseFloat(item.advance_payment || 0).toFixed(2) : '0.00'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-purple-600 font-bold">
-                          <IndianRupee className="h-4 w-4 mr-1" />
-                          {parseFloat(item.credit_limit || 0) > 0 ? parseFloat(item.credit_limit || 0).toFixed(2) : '0.00'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex flex-col space-y-3">
-                          {/* Amount Input Field */}
-                          <div className="relative">
-                            <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                              type="text" // Changed to text to allow better control over input
-                              inputMode="numeric" // Show numeric keyboard on mobile
-                              placeholder="Enter cash amount"
-                              value={amount[item.customer_id] || ""}
-                              onChange={(e) => handleAmountChange(item.customer_id, e.target.value)}
-                              className={`pl-8 pr-3 py-2 border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent w-full md:w-48 ${
-                                (paymentType[item.customer_id] || 'regular') === 'regular' && 
-                                amount[item.customer_id] && 
-                                item.amount_due && 
-                                parseFloat(amount[item.customer_id]) > parseFloat(item.amount_due) 
-                                  ? 'border-red-500 bg-red-50' 
-                                  : 'border-gray-300'
-                              }`}
-                            />
-                            {/* Max amount display removed as per requirements */}
-                          </div>
-                          
-                          {/* Payment Type Selection */}
-                          {showActionButtons[item.customer_id] && (
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handlePaymentTypeChange(item.customer_id, 'regular')}
-                                className={`flex-1 px-2 py-1 text-xs rounded-md ${
-                                  (paymentType[item.customer_id] || 'regular') === 'regular'
-                                    ? 'bg-orange-500 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                              >
-                                Regular Payment
-                              </button>
-                              <button
-                                onClick={() => handlePaymentTypeChange(item.customer_id, 'advance')}
-                                className={`flex-1 px-2 py-1 text-xs rounded-md ${
-                                  paymentType[item.customer_id] === 'advance'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                              >
-                                Advance Payment
-                              </button>
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount Due
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cash Paid
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Advance Receipt
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Credit Limit
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedData.map((item) => (
+                      <tr key={item.customer_id} className="hover:bg-orange-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
+                              <User className="h-5 w-5 text-orange-600" />
                             </div>
-                          )}
-                          
-                          {/* Action Buttons - shown only when amount is entered */}
-                          {showActionButtons[item.customer_id] && (
-                            <button
-                              onClick={() => handleCollectClick(item.customer_id)}
-                              disabled={collecting[item.customer_id]}
-                              className="flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all duration-200"
-                            >
-                              {collecting[item.customer_id] ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                              ) : (
-                                <Wallet className="h-3 w-3 mr-1" />
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">#{item.customer_id}</div>
+                              {item.customer_name && (
+                                <div className="text-sm text-gray-500">{item.customer_name}</div>
                               )}
-                              <span>Collect Cash</span>
-                            </button>
-                          )}
-                          
-                          {/* Confirmation Modal */}
-                          {showConfirmation[item.customer_id] && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                              <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h3 className="text-md font-bold text-gray-900">
-                                    Confirm {paymentType[item.customer_id] === 'advance' ? 'Advance' : 'Cash'} Collection
-                                  </h3>
-                                  <button 
-                                    onClick={() => cancelCollectCash(item.customer_id)}
-                                    className="text-gray-400 hover:text-gray-500"
-                                  >
-                                    <AlertCircle className="h-4 w-4" />
-                                  </button>
-                                </div>
-                                
-                                <div className="mb-4">
-                                  <p className="text-sm text-gray-700">
-                                    Collect <span className="font-bold text-green-600">
-                                      ₹{confirmationAmount[item.customer_id]}
-                                    </span> from customer <span className="font-bold">
-                                      #{item.customer_id}
-                                    </span> as {paymentType[item.customer_id] === 'advance' ? 'advance payment' : 'regular payment'}?
-                                  </p>
-                                </div>
-                                
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => cancelCollectCash(item.customer_id)}
-                                    disabled={collecting[item.customer_id]}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-orange-500"
-                                  >
-                                    No
-                                  </button>
-                                  <button
-                                    onClick={() => confirmCollectCash(item.customer_id)}
-                                    disabled={collecting[item.customer_id]}
-                                    className="flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-green-500 flex items-center justify-center"
-                                  >
-                                    {collecting[item.customer_id] ? (
-                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                                    ) : (
-                                      "Yes"
-                                    )}
-                                  </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-red-600 font-bold">
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            {parseFloat(item.amount_due || 0) > 0 ? parseFloat(item.amount_due || 0).toFixed(2) : '0.00'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-green-600 font-bold">
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            {parseFloat(item.amount_paid_cash || 0) > 0 ? parseFloat(item.amount_paid_cash || 0).toFixed(2) : '0.00'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-blue-600 font-bold">
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            {parseFloat(item.advance_payment || 0) > 0 ? parseFloat(item.advance_payment || 0).toFixed(2) : '0.00'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-purple-600 font-bold">
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            {parseFloat(item.credit_limit || 0) > 0 ? parseFloat(item.credit_limit || 0).toFixed(2) : '0.00'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex flex-col space-y-3">
+                            {/* Amount Input Field */}
+                            <div className="relative">
+                              <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <input
+                                type="text" // Changed to text to allow better control over input
+                                inputMode="numeric" // Show numeric keyboard on mobile
+                                placeholder="Enter cash amount"
+                                value={amount[item.customer_id] || ""}
+                                onChange={(e) => handleAmountChange(item.customer_id, e.target.value)}
+                                className={`pl-8 pr-3 py-2 border rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent w-full md:w-48 ${
+                                  (paymentType[item.customer_id] || 'regular') === 'regular' && 
+                                  amount[item.customer_id] && 
+                                  item.amount_due && 
+                                  parseFloat(amount[item.customer_id]) > parseFloat(item.amount_due) 
+                                    ? 'border-red-500 bg-red-50' 
+                                    : 'border-gray-300'
+                                }`}
+                              />
+                              {/* Max amount display removed as per requirements */}
+                            </div>
+                            
+                            {/* Payment Type Selection */}
+                            {showActionButtons[item.customer_id] && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handlePaymentTypeChange(item.customer_id, 'regular')}
+                                  className={`flex-1 px-2 py-1 text-xs rounded-md ${
+                                    (paymentType[item.customer_id] || 'regular') === 'regular'
+                                      ? 'bg-orange-500 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  Regular Payment
+                                </button>
+                                <button
+                                  onClick={() => handlePaymentTypeChange(item.customer_id, 'advance')}
+                                  className={`flex-1 px-2 py-1 text-xs rounded-md ${
+                                    paymentType[item.customer_id] === 'advance'
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  Advance Payment
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Action Buttons - shown only when amount is entered */}
+                            {showActionButtons[item.customer_id] && (
+                              <button
+                                onClick={() => handleCollectClick(item.customer_id)}
+                                disabled={collecting[item.customer_id]}
+                                className="flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all duration-200"
+                              >
+                                {collecting[item.customer_id] ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                ) : (
+                                  <Wallet className="h-3 w-3 mr-1" />
+                                )}
+                                <span>Collect Cash</span>
+                              </button>
+                            )}
+                            
+                            {/* Confirmation Modal */}
+                            {showConfirmation[item.customer_id] && (
+                              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-md font-bold text-gray-900">
+                                      Confirm {paymentType[item.customer_id] === 'advance' ? 'Advance' : 'Cash'} Collection
+                                    </h3>
+                                    <button 
+                                      onClick={() => cancelCollectCash(item.customer_id)}
+                                      className="text-gray-400 hover:text-gray-500"
+                                    >
+                                      <AlertCircle className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                  
+                                  <div className="mb-4">
+                                    <p className="text-sm text-gray-700">
+                                      Collect <span className="font-bold text-green-600">
+                                        ₹{confirmationAmount[item.customer_id]}
+                                      </span> from customer <span className="font-bold">
+                                        #{item.customer_id}
+                                      </span> as {paymentType[item.customer_id] === 'advance' ? 'advance payment' : 'regular payment'}?
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => cancelCollectCash(item.customer_id)}
+                                      disabled={collecting[item.customer_id]}
+                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-orange-500"
+                                    >
+                                      No
+                                    </button>
+                                    <button
+                                      onClick={() => confirmCollectCash(item.customer_id)}
+                                      disabled={collecting[item.customer_id]}
+                                      className="flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-green-500 flex items-center justify-center"
+                                    >
+                                      {collecting[item.customer_id] ? (
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                      ) : (
+                                        "Yes"
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <span>
+                        Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                        <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredData.length)}</span> of{' '}
+                        <span className="font-medium">{filteredData.length}</span> results
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-lg ${
+                          currentPage === 1
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-orange-600 hover:bg-orange-100 transition-colors duration-200'
+                        }`}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      
+                      {/* Page Numbers */}
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                                currentPage === pageNum
+                                  ? 'bg-orange-500 text-white'
+                                  : 'text-gray-700 hover:bg-orange-100'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`p-2 rounded-lg ${
+                          currentPage === totalPages
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-orange-600 hover:bg-orange-100 transition-colors duration-200'
+                        }`}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

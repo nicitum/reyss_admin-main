@@ -632,13 +632,23 @@ export const deleteOrderProduct = async (orderProductId) => {
   }
 };
 
-// Cancel order by order ID
-export const cancelOrder = async (orderId) => {
+// Cancel order(s) - supports both single ID and array of IDs
+export const cancelOrder = async (orderIds) => {
   try {
-    const response = await api.post(`/cancel_order/${orderId}`);
+    // Handle both single order ID and array of order IDs
+    const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
+    
+    // If only one ID, use URL parameter for backward compatibility
+    if (ids.length === 1) {
+      const response = await api.post(`/cancel_order/${ids[0]}`);
+      return response.data;
+    }
+    
+    // For multiple IDs, send them in the request body
+    const response = await api.post('/cancel_order', { orderId: ids });
     return response.data;
   } catch (error) {
-    console.error('Error cancelling order:', error);
+    console.error('Error cancelling order(s):', error);
     throw error;
   }
 };
